@@ -1,2 +1,2 @@
-# python-sources
-Collection of stand-alone Python programs
+# hamng-sources
+Ham Nguyen's collection of miscellaneous stand-alone programs
