@@ -146,4 +146,7 @@ def select_dr_bdr(ntwrk):
         res.update({swtch: get_dr_bdr(ntwrk, swtch, val)})
     return res
 
-print(select_dr_bdr(network))
+if __name__ == '__main__':
+    for swtch,dr_bdr in select_dr_bdr(network).items():
+        print("Switch: '%s': DR is '%s', BDR is '%s'"
+              % (swtch, dr_bdr[0], dr_bdr[1]))
