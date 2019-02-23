@@ -94,6 +94,8 @@ fabric.properties
 # Android studio 3.1+ serialized cache file
 .idea/caches/build_file_checksums.ser
 
+.idea/
+
 ### JetBrains Patch ###
 # Comment Reason: https://github.com/joeblau/gitignore.io/issues/186#issuecomment-215987721
 
@@ -101,7 +103,6 @@ fabric.properties
 # modules.xml
 # .idea/misc.xml
 # *.ipr
-build.xml
 
 # Sonarlint plugin
 .idea/sonarlint
@@ -116,6 +117,8 @@ nbproject/
 dist/
 nbdist/
 .nb-gradle/
+
+build.xml
 
 ### Python ###
 # Byte-compiled / optimized / DLL files
@@ -236,4 +239,3 @@ dmypy.json
 .venv/
 
 # End of https://www.gitignore.io/api/java,python,netbeans,jetbrains
-.idea/
