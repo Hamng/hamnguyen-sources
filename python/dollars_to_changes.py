@@ -8,7 +8,7 @@ This is a temporary script file.
 # Demo file for Spyder Tutorial
 # Hans Fangohr, University of Southampton, UK
 
-def dollars_to_changes(dollars, dollar_values):
+def dollars_to_changes(dollars, dollar_vals):
     """Given a dollars amount (e.g. $8.74), and a list of dollar_values
     in descending values (e.g. [5, 1, 0.50, 0.25, 0.10, 0.05, 0.01]),
     return a list of tuples of changes.
@@ -16,7 +16,7 @@ def dollars_to_changes(dollars, dollar_values):
     """
     cents = int(dollars * 100)
     res = []
-    for value in dollar_values:
+    for value in dollar_vals:
         cval = int(value * 100)
         n, cents = divmod(cents, cval)
         if n != 0:

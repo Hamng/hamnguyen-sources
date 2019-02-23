@@ -5,7 +5,8 @@ Created on Wed Feb 20 15:29:19 2019
 @author: Ham
 
 Task from HackerRank
-Given a string , which is the company name in lowercase letters, your task is to find the top three most common characters in the string.
+Given a string , which is the company name in lowercase letters,
+your task is to find the top three most common characters in the string.
 
 Print the three most common characters along with their occurrence count.
 Sort in descending order of occurrence count.
@@ -22,8 +23,8 @@ Constraints
 
 Output Format
 
-Print the three most common characters along with their occurrence count each on a separate line. 
-Sort output in descending order of occurrence count. 
+Print the three most common characters along with their occurrence count each on a separate line.
+Sort output in descending order of occurrence count.
 If the occurrence count is the same, sort the characters in alphabetical order.
 
 Sample Input 0
@@ -38,7 +39,8 @@ Explanation 0
 
 
 Here, b occurs  times. It is printed first.
-Both a and c occur  times. So, a is printed in the second line and c in the third line because a comes before c in the alphabet.
+Both a and c occur  times. So, a is printed in the second line
+and c in the third line because a comes before c in the alphabet.
 
 Note: The string  has at least  distinct characters.
 """
@@ -49,7 +51,7 @@ if __name__ == '__main__':
         "vyzbkfnzfvrthmtfvmbppkdebswfpspxnelhqnjlgntqzsprmhcnuomrvuyolvzlni"
     #s = input()
     occ = {}
-    [occ.update({c: occ.get(c,0)+1}) for c in s]
+    [occ.update({c: occ.get(c, 0)+1}) for c in s]
     #for c in s:
     #    occ.update({c: occ.get(c, 0) + 1})
     print(s)

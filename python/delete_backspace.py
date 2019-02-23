@@ -57,8 +57,8 @@ def delete_backspace(s):
 
 if __name__ == '__main__':
     #delete_backspace(input())
-    delete_backspace(r"\1\b2: '1' removed");
-    delete_backspace(r"\\bA: first '\' removed");
-    delete_backspace(r"123\b\bABC: '23' removed bc consecutive bs");
+    delete_backspace(r"\1\b2: '1' removed")
+    delete_backspace(r"\\bA: first '\' removed")
+    delete_backspace(r"123\b\bABC: '23' removed bc consecutive bs")
     delete_backspace(r"\b\b\b  with lead\bDing bs A\bB and em\bMbedde\bEd some\b\b\bOMEwhere")
     delete_backspace(r"\b\b\b\b123456\b\b\b\b\b\b\b\b\b\bExtra bs removed")

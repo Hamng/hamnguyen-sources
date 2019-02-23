@@ -76,30 +76,30 @@ network = [
 ]
 
 
-def get_nodes_by_id(ntwrk, id):
+def get_nodes_by_id(ntwrk, nodeid):
     """
     Return a dictionary of nodes (in ntwrk) whose key matches the
-    given 'id'. (Ideally, we shouldn't even need this function;
-    if ntwrk is a simple dict, then simply return {id: ntwrk[id]}.)
+    given 'nodeid'. (Ideally, we shouldn't even need this function;
+    if ntwrk is a simple dict, then simply return {nodeid: ntwrk[nodeid]}.)
     """
     return {k: v for el in ntwrk
-                  for k,v in el.items() if k == id}
+                  for k, v in el.items() if k == nodeid}
 
 def get_nodes_by_type(ntwrk, typ='switch'):
     """
     Return a dictionary of nodes (in ntwrk) whose 'type' matches 'typ'.
     """
     return {k: v for el in ntwrk
-                  for k,v in el.items() if v['type'] == typ}
+                  for k, v in el.items() if v['type'] == typ}
 
-def get_nodes_by_id_type_connect_to(ntwrk, swtch, id, typ='router'):
+def get_nodes_by_id_type_connect_to(ntwrk, swtch, nodeid, typ='router'):
     """
-    Locate a node matching 'id', verify that its type is 'typ',
+    Locate a node matching 'nodeid', verify that its type is 'typ',
     then locate a connection to 'swtch',
     then return a tuple of attributes that will be used for sorting.
     If not found, return an empty tuple.
     """
-    for k,v in get_nodes_by_id(ntwrk, id).items():
+    for k, v in get_nodes_by_id(ntwrk, nodeid).items():
         if v['type'] == typ:
             for conn in v['connections']:
                 if conn['to'] == swtch:
@@ -116,7 +116,7 @@ def get_dr_bdr(ntwrk, swtch, val):
     # form a list of tuples of routers connecting to 'swtch'
     # with appropriate attributes for sorting next.
     lst = [get_nodes_by_id_type_connect_to(ntwrk, swtch, c['to'])
-            for c in val['connections'] if c['link-state'] == 'up']
+           for c in val['connections'] if c['link-state'] == 'up']
     # Filter out empty elements
     lst = [e for e in lst if e]
     #print(lst)
@@ -140,13 +140,13 @@ def select_dr_bdr(ntwrk):
     corresponding DR and BDR.
     """
     res = {}
-    for swtch,val in get_nodes_by_type(ntwrk).items():
+    for swtch, val in get_nodes_by_type(ntwrk).items():
         #print(swtch)
         #print(val)
         res.update({swtch: get_dr_bdr(ntwrk, swtch, val)})
     return res
 
 if __name__ == '__main__':
-    for swtch,dr_bdr in select_dr_bdr(network).items():
+    for swch, dr_bdr in select_dr_bdr(network).items():
         print("Switch: '%s': DR is '%s', BDR is '%s'"
-              % (swtch, dr_bdr[0], dr_bdr[1]))
+              % (swch, dr_bdr[0], dr_bdr[1]))
