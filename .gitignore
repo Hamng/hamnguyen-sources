@@ -101,6 +101,7 @@ fabric.properties
 # modules.xml
 # .idea/misc.xml
 # *.ipr
+build.xml
 
 # Sonarlint plugin
 .idea/sonarlint
@@ -111,6 +112,7 @@ fabric.properties
 **/nbproject/Package-*.bash
 build/
 nbbuild/
+nbproject/
 dist/
 nbdist/
 .nb-gradle/
@@ -234,3 +236,4 @@ dmypy.json
 .venv/
 
 # End of https://www.gitignore.io/api/java,python,netbeans,jetbrains
+.idea/
