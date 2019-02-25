@@ -44,16 +44,18 @@ and c in the third line because a comes before c in the alphabet.
 
 Note: The string  has at least  distinct characters.
 """
+import collections
 
 if __name__ == '__main__':
     s = "szrmtbttyyaymadobvwniwmozojggfbtswdiocewnqsjrkimhovimghixqryqgzhgba"\
         "kpncwupcadwvglmupbexijimonxdowqsjinqzytkooacwkchatuwpsoxwvgrrejkukc"\
         "vyzbkfnzfvrthmtfvmbppkdebswfpspxnelhqnjlgntqzsprmhcnuomrvuyolvzlni"
     #s = input()
-    occ = {}
-    [occ.update({c: occ.get(c, 0)+1}) for c in s]
+    #occ = {}
+    #[occ.update({c: occ.get(c, 0)+1}) for c in s]
     #for c in s:
     #    occ.update({c: occ.get(c, 0) + 1})
+    occ = collections.Counter(s)
     print(s)
     print(occ)
     occ_sorted = sorted(occ.items(), key=lambda x: x[1] * 1000 - ord(x[0]),

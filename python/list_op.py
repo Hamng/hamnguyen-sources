@@ -79,7 +79,7 @@ if __name__ == '__main__':
     lst = []
     #for _ in range(N):
     #    command, *args = input().split()
-    stdin_sim.pop(0)
+    stdin_sim.pop(0)            # discarded, don't need num of commands
     while stdin_sim:
         command, *args = stdin_sim.pop(0).split()
         tup = tuple((int(e) for e in args))
