@@ -64,13 +64,16 @@ Sample Output
 
 #cube = lambda x: x*x*x  # complete the lambda function
 
+# Returning the Nth Fibonacci number (a single number)
 #def fib(n):
 #    return n if n < 2 else fib(n-1) + fib(n-2)
+fib = lambda n: n if n<=1 else fib(n-1)+fib(n-2)
 
 def fibonacci(n):
     """Return a list of the first n Fibonacci number(s).
     0 returns an empty list."""
     #return [fib(i) for i in range(n)]
+    # Use below for a non-recursive solution
     l = [0, 1] if n > 1 else ([0] if n > 0 else [])
     for _ in range(2, n):
         l.append(l[-2] + l[-1])
