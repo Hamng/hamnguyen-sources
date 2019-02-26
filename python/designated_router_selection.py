@@ -14,11 +14,8 @@ specified in an Arrcus interview (for employment).
     3.  The selection of fields or criteria to be sorted might be fuzzy;
         however, it's flexible enough to change easily.
     4.  Same goes for the sorting order as well as asc/descending.
-"""
 
-from operator import itemgetter
 
-"""
 Assumptions about the 'network' object:
     0.  It should simply be a dict instead of a list of dicts,
         but I'm staying true to the original assignment.
@@ -28,52 +25,12 @@ Assumptions about the 'network' object:
     4.  Link-state are consistent.
     5.  No missing keys; i.e. 'type' and 'connections' must exist for all,
         and 'loopback' and 'priority' must also exist for 'router'
+
 """
-network = [
-    {
-        'R1': {
-            'type': 'router',
-            'connections': [
-                {'to': 'sw1', 'port':  'f0/0', 'other-port': '1', 'link-state': 'up'}
-            ],
-            'loopback': '1.1.1.1',
-            'priority': 1
-        },
-        'R2': {
-            'type': 'router',
-            'connections': [
-                {'to': 'sw1', 'port': 'f0/0', 'other-port': '2', 'link-state': 'up'}
-            ],
-            'loopback': '2.2.2.2',
-            'priority': 1
-        },
-        'R3': {
-            'type': 'router',
-            'connections': [
-                {'to': 'sw1', 'port': 'f0/0', 'other-port': '3', 'link-state': 'up'}
-            ],
-            'loopback': '3.3.3.3',
-            'priority': 1
-        },
-        'R4': {
-            'type': 'router',
-            'connections': [
-                {'to': 'sw1', 'port': 'f0/0', 'other-port': '4', 'link-state': 'up'}
-            ],
-            'loopback': '3.3.3.3',
-            'priority': 1
-        },
-        'sw1': {
-            'type': 'switch',
-            'connections': [
-                {'to': 'R1', 'port': '1', 'other-port': '4', 'link-state': 'up'},
-                {'to': 'R2', 'port': '2', 'other-port': '4', 'link-state': 'up'},
-                {'to': 'R3', 'port': '3', 'other-port': '4', 'link-state': 'up'},
-                {'to': 'R4', 'port': '4', 'other-port': '4', 'link-state': 'up'}
-            ]
-        }
-    }
-]
+
+import sys
+import json
+from operator import itemgetter
 
 
 def get_nodes_by_id(ntwrk, nodeid):
@@ -147,6 +104,7 @@ def select_dr_bdr(ntwrk):
     return res
 
 if __name__ == '__main__':
+    network = json.load(sys.stdin)
     for swch, dr_bdr in select_dr_bdr(network).items():
         print("Switch: '%s': DR is '%s', BDR is '%s'"
               % (swch, dr_bdr[0], dr_bdr[1]))
