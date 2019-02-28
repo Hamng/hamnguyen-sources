@@ -104,13 +104,13 @@ def is_valid_cc(s):
     else:
         return False                    # 1st digit not 456 => False
 
-    if re.match(r"^([0-9]{4}-){3}[0-9]{4}$", s):
+    if re.match(r"^([\d]{4}-){3}[\d]{4}$", s):
         s = "".join(s.split('-'))       # remove the dash
-    elif not re.match(r"^[0-9]{16}$", s):
+    elif not re.match(r"^[\d]{16}$", s):
         return False
 
     #print(s)
-    return not re.search(r"([0-9])\1\1\1", s)
+    return not re.search(r"([\d])\1\1\1", s)
 
 
 if __name__ == '__main__':

@@ -65,7 +65,7 @@ def fun(s):
 
     user, web = s.split('@')
 
-    if not user or re.search(r"[^A-Za-z0-9_\-]", user):
+    if not user or re.search(r"[^\w\-]", user, flags=re.ASCII):
         return False
 
     if web.count('.') != 1:
@@ -74,7 +74,7 @@ def fun(s):
     site, ext = web.split('.')
     #print("user=<" + user + ">", "site=<" + site + ">", "ext=<" + ext + ">")
 
-    return not bool(re.search(r"[^A-Za-z0-9]", site)) and (len(ext) < 4)
+    return not bool(re.search(r"[^A-Za-z\d]", site)) and (len(ext) < 4)
 
 def filter_mail(emails):
     """doc"""
