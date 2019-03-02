@@ -42,7 +42,7 @@ Sample Input
 Sample Output
 
  (1, 3) (1, 4) (2, 3) (2, 4)
- 
+
  """
 
 import itertools
@@ -55,4 +55,5 @@ if __name__ == '__main__':
     b = [3, 4]
 
     #print(a, b)
-    [print(tup, end=" ") for tup in sorted(itertools.product(a, b))]
+    #[print(tup, end=" ") for tup in sorted(itertools.product(a, b))]
+    print(*(tup for tup in sorted(itertools.product(a, b))))

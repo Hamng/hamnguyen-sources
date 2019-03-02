@@ -82,4 +82,4 @@ if __name__ == '__main__':
     lst = list(filter(lambda t: t[0] != lowest, lst))
     lowest = lst[0][0]                                  # now 2nd lowest
     lst = [tup[1] for tup in lst if tup[0] == lowest]   # only names of lowest student(s)
-    [print(n) for n in sorted(lst)]
+    print(*sorted(lst), sep="\n")

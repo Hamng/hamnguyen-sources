@@ -70,7 +70,8 @@ if __name__ == '__main__':
             occ[word] = 1
 
     print(len(lst))
-    [print(occ[word], end=" ") for word in lst]
+    #[print(occ[word], end=" ") for word in lst]
+    print(*[occ[word] for word in lst])
 
     # Alternately, can do a 1-liner below, but the resulting
     # dictionary might NOT be printed in the order of appearance

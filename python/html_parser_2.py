@@ -119,7 +119,8 @@ class MyHTMLParser(HTMLParser):
         comment = data.splitlines()
         if len(comment) > 1:
             print(">>> Multi-line Comment")
-            [print(c) for c in comment]
+            #[print(c) for c in comment]
+            print(*[c for c in comment], sep="\n")
         else:
             print(">>> Single-line Comment\n" + comment[0])
 

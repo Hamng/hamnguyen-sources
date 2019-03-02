@@ -67,7 +67,8 @@ def merge_the_tools(string, k):
     #print(l)
     res = ["".join(collections.OrderedDict.fromkeys(e).keys()) for e in l]
     #print(res)
-    [print(e) for e in res]
+    #[print(e) for e in res]
+    print(*(e for e in res), sep="\n")
 
 if __name__ == '__main__':
     #string, k = input(), int(input())

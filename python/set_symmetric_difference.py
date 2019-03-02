@@ -150,4 +150,5 @@ if __name__ == '__main__':
     m = set(map(int, STDIN_SIO.readline().strip().split()))
     STDIN_SIO.readline().strip()                             # discarded, not needed
     n = set(map(int, STDIN_SIO.readline().strip().split()))
-    [print(i) for i in sorted(m.symmetric_difference(n))]
+    #[print(i) for i in sorted(m.symmetric_difference(n))]
+    print(*(i for i in sorted(m.symmetric_difference(n))), sep="\n")
