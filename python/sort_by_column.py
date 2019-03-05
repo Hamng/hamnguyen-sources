@@ -75,4 +75,6 @@ if __name__ == '__main__':
     #k = int(input())
     k = int(stdin_sim.pop(0))
 
-    [print(" ".join([str(e) for e in l])) for l in sorted(arr, key=itemgetter(k))]
+    #[print(" ".join([str(e) for e in l])) for l in sorted(arr, key=itemgetter(k))]
+    print(*((" ".join([str(e) for e in l])) for l in sorted(arr, key=itemgetter(k))),
+          sep="\n")
