@@ -6,7 +6,7 @@
 // To split to multiple files:
 //  1.	simple_thread.hh: already there.
 //  2.	SimplePthread::run(): implement it in a separate *.cc.
-//  3.	make  CXXFLAGS=-std=c++11  <this_file_no_suffix>.o  simple_pthread_run.o
+//  3.	make  CXXFLAGS='-std=c++11 -DSIMPLE_PTHREAD_EXTERNAL' <this_file_no_suffix>.o  simple_pthread_run.o
 //	${CXX:-g++}  -o <this_file_no_suffix>  *.o  -lpthread
 
 
@@ -71,7 +71,11 @@ SimplePthread::thread_entry(void *arg)
     SimplePthread *pthr = (SimplePthread *) arg;
 
     pthr->thread_id = pthread_self();
+#ifdef __gnu_linux__
     pthr->cpu = sched_getcpu();
+#else
+    pthr->cpu = 0;
+#endif
 
     // If wanting to give other threads a chance to be launched/started,
     // then uncomment the code below to wait a bit.

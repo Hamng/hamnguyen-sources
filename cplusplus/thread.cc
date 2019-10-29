@@ -2,84 +2,127 @@
 //	make  CXXFLAGS=-std=c++11  LDLIBS=-lpthread  <this_file_no_suffix>
 // Don't even need a Makefile!
 // To keep everything in a single file:
-//	SimplePthread::run(): implement it here, then 'make' as above
+//	MyThreadObject::run(): implement it here, then 'make' as above
 // To split to multiple files:
-//  1.	simple_thread.hh: already there.
-//  2.	SimplePthread::run(): implement it in a separate *.cc.
-//  3.	make  CXXFLAGS=-std=c++11  <this_file_no_suffix>.o  simple_pthread_run.o
+//  1.	my_thread.hh: already there.
+//  2.	MyThreadObject::run(): implement it in a separate *.cc.
+//  3.	make  CXXFLAGS='-std=c++11 -DMY_THREAD_EXTERNAL'  <this_file_no_suffix>.o  my_thread_run.o
 //	${CXX:-g++}  -o <this_file_no_suffix>  *.o  -lpthread
 
 
 #include <iostream>
-//#include <vector>
 #include <thread>
 #include <sched.h>
-//#include <stdint.h>
 #include <stdlib.h>
-#include <unistd.h>
 
 using namespace std;
 
 
-static unsigned int verbosity = 4;
+#if defined(MY_THREAD_EXTERNAL)
 
+#include "my_thread.hh"
 
-class MyThreadObj {
+#else
+
+class MyThreadObject {
   public:
-    void operator()();
-    MyThreadObj(const unsigned int thr_no): thread_num(thr_no) {}
+    static void launch_threads(const size_t num_threads);
+    static void thread_entry(MyThreadObject * const);
+
+    static int		verbosity;
 
   protected:
-    const unsigned int	thread_num;	// a small unique uint to distinguish threads
-    unsigned int	cpu;		// the CPU# a thread runs on
+    virtual void run();
+
+    thread *		pthread;
+    unsigned int	thread_num;		// a small unique uint to distinguish threads
+    unsigned int	cpu;			// the CPU# a thread runs on
 };
 
+#endif
 
-void MyThreadObj::operator()()
+
+int MyThreadObject::verbosity = 4;
+
+
+void
+MyThreadObject::thread_entry(MyThreadObject *const pthr)
 {
-    cpu = sched_getcpu();
+#ifdef __gnu_linux__
+    pthr->cpu = sched_getcpu();
+#else
+    pthr->cpu = 0;
+#endif
+
+    // If wanting to give other threads a chance to be launched/started,
+    // then uncomment the code below to wait a bit.
+    //sleep(pthr->thread_num);
+
+    // Note: stdout is going to be severely intermixed -- even on a single line so
+    // would need a mechanism to serialize stdout (i.e. each thread completes its line).
+
     if (verbosity > 2) {
-	cout << " Thread #" << thread_num << ": starts running on CPU #"
-	     << cpu << endl;
+	cout << " Thread #" << pthr->thread_num << ": starts running on CPU #"
+	     << pthr->cpu << endl;
+    }
+
+    pthr->run();
+
+    // Note: if a thread calls pthread_exit(), it will NOT reach here!
+
+    if (verbosity > 2) {
+	cout << " Thread #" << pthr->thread_num << ": finishes running on CPU #"
+	     << pthr->cpu << endl;
     }
 }
 
 
 void
-launch_threads(const size_t num_threads)
+MyThreadObject::launch_threads(const size_t num_threads)
 {
-    std::thread *threads[num_threads];
-    unsigned int i;
+    MyThreadObject thread_array[num_threads];
 
     if (verbosity > 1) {
 	cout << "Creating/launching " << num_threads << " threads:" << endl;
     }
 
-    for (i = 0; i < num_threads; i++) {
+    for (auto &thr : thread_array) {
+	// Assign each thread a unique small uint to distinguish
+	thr.thread_num = (&thr - &thread_array[0]) + 1;
 	if (verbosity > 3) {
-	    cout << "  Thread #" << i + 1 << ": being created/launched" << endl;
+	    cout << "  Thread #" << thr.thread_num << ": being created/launched" << endl;
 	}
-	threads[i] = new std::thread(
-*(new MyThreatObj(i + 1))
-);
+	thr.pthread = new thread(thread_entry, &thr);
     }
 
     if (verbosity > 1) {
-	cout << "Waiting for " << num_threads << " threads to complete..." << endl;
+	cout << "Waiting for " << num_threads << " threads to join..." << endl;
     }
 
-    for (i = 0; i < num_threads; i++) {
-	threads[i]->join();
-
+    for (auto &thr : thread_array) {
+        thr.pthread->join();
+	delete thr.pthread;
 	if (verbosity > 3) {
-	    cout << "  Thread #" << i + 1 << ": joined" << endl;
+	    cout << "  Thread #" << thr.thread_num << ": ran on CPU #" << thr.cpu << endl;
 	}
     }
 
     if (verbosity > 1) {
-	cout << "All " << num_threads << " threads finished" << endl;
+	cout << "All " << num_threads << " threads joined" << endl;
     }
 }
+
+
+
+#if !defined(MY_THREAD_EXTERNAL)
+
+// This is the gut of what's going to be done within each thread
+void
+MyThreadObject::run()
+{
+}
+
+#endif
 
 
 int
@@ -87,7 +130,7 @@ main(int argc, char *argv[])
 {
     const size_t nthreads = (argc < 2) ? 8 : atoi(argv[1]);
 
-    launch_threads(nthreads);
+    MyThreadObject::launch_threads(nthreads);
 
     return 0;
 }
