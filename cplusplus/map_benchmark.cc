@@ -1,5 +1,6 @@
 // To build:
 //	make CXXFLAGS=-std=c++11 LDLIBS='-lcrypto -lpthread' map_benchmark
+//	Add '-ljemalloc' if wanting to link with the jemalloc library
 // Don't even need a Makefile!
 // Too bad, C++11 doesn't support some needed features
 //	(e.g. can't use "auto" in function declaration),
@@ -14,6 +15,8 @@
 #include <stdlib.h>
 #include <openssl/engine.h>
 #include <openssl/rand.h>
+#include <map>
+#include <chrono>
 
 using namespace std;
 
@@ -29,16 +32,18 @@ class MyThreadObject {
   protected:
     virtual void run();
 
-    thread *		pthread;
+    thread *		pthread;		// "p" is for pointer
     unsigned int	thread_num;		// a small unique uint to distinguish threads
     unsigned int	cpu;			// the CPU# a thread runs on
 
     size_t		num_pairs;		// num of Key/Value pairs
+    size_t		map_size;		// size of resulting map
+    double		num_seconds;		// #seconds
 };
 
 
 template <typename K, typename V>
-int MyThreadObject<K,V>::verbosity = 3;
+int MyThreadObject<K,V>::verbosity = 2;
 
 
 template <typename K, typename V>
@@ -79,6 +84,8 @@ void
 MyThreadObject<K,V>::launch_threads(const size_t num_threads,
 				    const size_t num_pairs)
 {
+    auto start = chrono::high_resolution_clock::now();
+
     MyThreadObject<K,V> thread_array[num_threads];
 
     if (verbosity > 1) {
@@ -105,10 +112,19 @@ MyThreadObject<K,V>::launch_threads(const size_t num_threads,
 	if (verbosity > 3) {
 	    cout << "  Thread #" << thr.thread_num << ": ran on CPU #" << thr.cpu << endl;
 	}
+	if (verbosity > 1) {
+	    cout << "Thread #" << thr.thread_num << " (CPU #" << thr.cpu
+		 << "): mapped " << thr.map_size << " pairs in "
+		 << thr.num_seconds << "secs" << endl;
+	}
     }
 
+    auto finish = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed = finish - start;
+
     if (verbosity > 1) {
-	cout << "All " << num_threads << " threads joined" << endl;
+	cout << "All " << num_threads << " threads joined." << endl
+	     << "Total elapsed time: " << elapsed.count() << "secs" << endl;
     }
 }
 
@@ -119,9 +135,11 @@ template <typename K, typename V>
 void
 MyThreadObject<K,V>::run()
 {
-    K *keys   = new K[num_pairs];
-    V *values = new V[num_pairs];
-    int res;
+    K * keys   = new K[num_pairs];
+    V * values = new V[num_pairs];
+    K * pk;
+    V * pv;
+    int i, res;
 
     res = RAND_bytes((unsigned char *) keys, num_pairs * sizeof(K));
     if (verbosity > 2) {
@@ -136,6 +154,27 @@ MyThreadObject<K,V>::run()
 	     << "): RAND_bytes(values, " << num_pairs
 	     << " * " << sizeof(V) << ") returned " << res << endl;
     }
+
+    map<K, V> kv_map;
+
+    auto start = chrono::high_resolution_clock::now();
+
+    for (i = 0, pk = keys, pv = values; i < num_pairs; i++, ++pk, ++pv) {
+	kv_map.insert(make_pair(*pk, *pv));	// don't replace dup key
+	//kv_map[*pk] = *pv;			// do	 replace
+    }
+
+    auto finish = chrono::high_resolution_clock::now();
+    chrono::duration<double> elapsed = finish - start;
+    num_seconds = elapsed.count();
+
+    map_size = kv_map.size();
+    if (verbosity > 2) {
+    	cout << " Thread #" << thread_num << " (CPU #" << cpu
+    	     << "): mapped " << map_size << " pairs in "
+	     << num_seconds << "secs" << endl;
+    }
+    kv_map.clear();
 
     delete keys;
     delete values;
