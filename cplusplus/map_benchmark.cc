@@ -160,7 +160,7 @@ MyThreadObject<K,V>::run()
     auto start = chrono::high_resolution_clock::now();
 
     for (i = 0, pk = keys, pv = values; i < num_pairs; i++, ++pk, ++pv) {
-	kv_map.insert(make_pair(*pk, *pv));	// don't replace dup key
+	kv_map.insert({*pk, *pv});		// don't replace dup key
 	//kv_map[*pk] = *pv;			// do	 replace
     }
 
@@ -193,25 +193,24 @@ main(int argc, char *argv[])
     const bool key_is_str  = ((argc < 4) ? 0 : atoi(argv[3])) & 1;
     const bool val_is_str  = ((argc < 5) ? 0 : atoi(argv[4])) & 1;
 
-
     ENGINE *engine;
     ENGINE_load_rdrand();
     engine = ENGINE_by_id("rdrand");
     if (engine == NULL) {
 	cerr << "ENGINE_by_id(\"rdrand\") returned "
 	     << ERR_get_error() << endl;
-	exit(1);
-    }
+	//exit(1);
+    } else {
+	if ( ! ENGINE_init(engine) ) {
+	    cerr << "ENGINE_init returned " << ERR_get_error() << endl;
+	    exit(1);
+	}
 
-    if ( ! ENGINE_init(engine) ) {
-	cerr << "ENGINE_init returned " << ERR_get_error() << endl;
-	exit(1);
-    }
-
-    if ( ! ENGINE_set_default(engine, ENGINE_METHOD_RAND) ) {
-	cerr << "ENGINE_set_default(*, ENGINE_METHOD_RAND) returned "
-	     << ERR_get_error() << endl;
-	exit(1);
+	if ( ! ENGINE_set_default(engine, ENGINE_METHOD_RAND) ) {
+	    cerr << "ENGINE_set_default(*, ENGINE_METHOD_RAND) returned "
+		 << ERR_get_error() << endl;
+	    exit(1);
+	}
     }
 
     if (key_is_str && val_is_str) {
