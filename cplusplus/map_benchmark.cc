@@ -1,15 +1,16 @@
 // To build:
-//	make CXXFLAGS=-std=c++11 LDLIBS='-lcrypto -lpthread' map_benchmark
+//	make CXXFLAGS='-O3 -std=c++11' LDLIBS='-lcrypto -lpthread' map_benchmark
 //	Add '-ljemalloc' if wanting to link with the jemalloc library
 // Don't even need a Makefile!
 // Too bad, C++11 doesn't support some needed features
 //	(e.g. can't use "auto" in function declaration),
 //	so really need a newer C++, do:
-//	scl  enable  devtoolset-7  bash
-//	make  CXXFLAGS=-std=c++17  ...
+//	scl  enable  devtoolset-8  bash
+//	make  CXXFLAGS='-O3 -std=c++17'  ...
 
 
 #include <iostream>
+#include <iomanip>
 #include <thread>
 #include <sched.h>
 #include <stdlib.h>
@@ -114,8 +115,8 @@ MyThreadObject<K,V>::launch_threads(const size_t num_threads,
 	}
 	if (verbosity > 1) {
 	    cout << "Thread #" << thr.thread_num << " (CPU #" << thr.cpu
-		 << "): mapped " << thr.map_size << " pairs in "
-		 << thr.num_seconds << "secs" << endl;
+		 << "): " << thr.map_size << " pairs were map::insert'ed in "
+		 << fixed << setprecision(4) << thr.num_seconds << "secs" << endl;
 	}
     }
 
@@ -124,7 +125,8 @@ MyThreadObject<K,V>::launch_threads(const size_t num_threads,
 
     if (verbosity > 1) {
 	cout << "All " << num_threads << " threads joined." << endl
-	     << "Total elapsed time: " << elapsed.count() << "secs" << endl;
+	     << "Total elapsed time: " << fixed << setprecision(4)
+	     << elapsed.count() << "secs" << endl;
     }
 }
 
@@ -171,8 +173,8 @@ MyThreadObject<K,V>::run()
     map_size = kv_map.size();
     if (verbosity > 2) {
     	cout << " Thread #" << thread_num << " (CPU #" << cpu
-    	     << "): mapped " << map_size << " pairs in "
-	     << num_seconds << "secs" << endl;
+	     << "): " << map_size << " pairs were map::insert'ed in "
+	     << fixed << setprecision(4) << num_seconds << "secs" << endl;
     }
     kv_map.clear();
 
@@ -197,6 +199,9 @@ main(int argc, char *argv[])
     ENGINE_load_rdrand();
     engine = ENGINE_by_id("rdrand");
     if (engine == NULL) {
+	// Hmm, the "rdrand" engine seems to work only on some x86_64
+	// and not on others, and not on ARM.
+	// But that seems to be a soft failure, so don't exit()
 	cerr << "ENGINE_by_id(\"rdrand\") returned "
 	     << ERR_get_error() << endl;
 	//exit(1);
