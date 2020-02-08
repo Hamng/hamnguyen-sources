@@ -14,3 +14,6 @@ python -c "import sys; import re; print(sum(len(re.split('[A-Z]',lines))-1 for l
 # or matched at end (lines='   A' => after_match='')
 # or both (lines='A' => before_ and after_ are both '')
 python -c "import fileinput; import re; print(sum(len(re.split('[A-Z]',lines))-1 for lines in fileinput.input()))" file(s)...
+
+# Geez, not sure why I used re.split???  Better version (don't need weird -1):
+python -c "import fileinput; import re; print(sum(len(re.findall('[A-Z]',lines)) for lines in fileinput.input()))" file(s)...
