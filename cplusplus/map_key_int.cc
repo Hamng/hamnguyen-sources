@@ -27,15 +27,12 @@ using namespace std;
 
 class MyThreadObject {
   public:
-    static void		thread_entry(MyThreadObject * const);
+    void		thread_entry();
 
     static int		verbosity;
 
   protected:
-    //MyThreadObject(const size_t nthreads);
-    //virtual ~MyThreadObject();
-
-    virtual void 	run() = 0;
+    virtual void 	run();
 
     thread *		pthread;		// "p" is for pointer
     unsigned int	thread_num;		// a small unique uint to distinguish threads
@@ -53,8 +50,6 @@ class ValueObject: public MyThreadObject {
 			       const size_t num_pairs);
 
   protected:
-    //virtual ~ValueObject();
-
     size_t		map_size;		// size of resulting map
     double		num_seconds;		// #seconds
 
@@ -80,70 +75,43 @@ int MyThreadObject::verbosity = 4;
 ValueObject::ValueType *ValueObject::values  = NULL;
 size_t ValueObject::num_pairs = 0;
 
-#if 0
-MyThreadObject::MyThreadObject(const size_t nthreads)
-    : num_threads(nthreads), thread_array(NULL)
+
+void
+MyThreadObject::run()
 {
+cerr << "MyThreadObject@" << this << "::" << __func__ << "()" << endl;
 }
-
-MyThreadObject::~MyThreadObject()
-{
-    for (auto i = num_threads; i--;) {
-	delete thread_array[i].pthread;		// in case it wasn't deleted yet
-    }
-    delete thread_array;
-}
-
-ValueObject::ValueObject(const size_t nthreads, const size_t npairs)
-    : MyThreadObject(nt), num_pairs(npairs)
-{
-    values = new ValueObject[num_pairs];
-}
-
-
-ValueObject::~ValueObject()
-{
-    delete values;			// in case it wasn't deleted yet
-}
-
-
-KeyObject_4::KeyObject_4(const size_t nthreads, const size_t npairs)
-    : ValueObject(nthreads, npairs)
-{
-    thread_array = new KeyObject_4[nthreads];
-}
-#endif
 
 
 void
-MyThreadObject::thread_entry(MyThreadObject *const pthr)
+MyThreadObject::thread_entry()
 {
 #ifdef __gnu_linux__
-    pthr->cpu = sched_getcpu();
+    cpu = sched_getcpu();
 #else
-    pthr->cpu = 0;
+    cpu = 0;
 #endif
 
     // If wanting to give other threads a chance to be launched/started,
     // then uncomment the code below to wait a bit.
-    //sleep(pthr->thread_num);
+    //sleep(thread_num);
 
     // Note: stdout is going to be severely intermixed -- even on a single line so
     // would need a mechanism to serialize stdout (i.e. each thread completes its line).
 
     if (verbosity > 2) {
-	cout << " Thread #" << pthr->thread_num << ": starts running on CPU #"
-<< "@" << pthr << ", #"
-	     << pthr->cpu << endl;
+	cout << " Thread #" << thread_num << ": starts running on CPU #"
+<< "@" << this << ", get_id()=" << pthread->get_id() << ", #"
+	     << cpu << endl;
     }
 
-    pthr->run();
+    run();
 
     // Note: if a thread calls pthread_exit(), it will NOT reach here!
 
     if (verbosity > 2) {
-	cout << " Thread #" << pthr->thread_num << ": finishes running on CPU #"
-	     << pthr->cpu << endl;
+	cout << " Thread #" << thread_num << ": finishes running on CPU #"
+	     << cpu << endl;
     }
 }
 
@@ -155,7 +123,7 @@ ValueObject::launch_threads(ValueObject *const thread_array,
 {
     auto start = chrono::high_resolution_clock::now();
     auto i = num_threads;
-    auto pthr = thread_array;
+    ValueObject * pthr = thread_array;
 
     num_pairs = npairs;
     values = new ValueType[num_pairs];
@@ -169,7 +137,7 @@ ValueObject::launch_threads(ValueObject *const thread_array,
 	cout << "Creating/launching " << num_threads << " threads:" << endl;
     }
 
-    for (i = 0, pthr = thread_array; i < num_threads; i++, pthr++) {
+    for (i = 0, pthr = &thread_array[i]; i < num_threads; i++, pthr++) {
 	// Assign each thread a unique small uint to distinguish
 	pthr->thread_num = i + 1;
 	if (verbosity > 3) {
@@ -177,9 +145,9 @@ ValueObject::launch_threads(ValueObject *const thread_array,
 << "@" << pthr
 		 << ": being created/launched" << endl;
 	}
-	pthr->pthread = new thread(thread_entry, pthr);
-pthr->pthread->join();
-sleep(5);
+	pthr->pthread = new thread(&MyThreadObject::thread_entry, ref(*pthr));
+//pthr->pthread->join();
+sleep(30);
     }
 
     if (verbosity > 1) {
@@ -187,9 +155,12 @@ sleep(5);
     }
 
     for (i = num_threads, pthr = thread_array; i--; pthr++) {
-        pthr->pthread->join();
-	//delete pthr->pthread;
-	//pthr->pthread = NULL;
+        if (pthr->pthread->joinable()) {
+cout << "#" << pthr->thread_num << " joinable(), so joining." << endl;
+	    pthr->pthread->join();
+	}
+	delete pthr->pthread;
+	pthr->pthread = NULL;
 	if (verbosity > 3) {
 	    cout << "  Thread #" << pthr->thread_num
 		 << ": ran on CPU #" << pthr->cpu << endl;
@@ -220,7 +191,7 @@ sleep(5);
 void
 KeyObject_4::run()
 {
-cerr << __func__ << "(): this@" << this << endl;
+cerr << "Thread #" << thread_num << " (CPU #" << cpu << "): this@" << this << endl;
     int i, res;
     keys    = new KeyType[num_pairs];
     auto pk = keys;
@@ -298,6 +269,7 @@ main(int argc, char *argv[])
 	default:
 	    KeyObject_4 * thread_array = new KeyObject_4[num_threads];
 	    ValueObject::launch_threads(thread_array, num_threads, num_pairs);
+	    //delete thread_array;
 	    break;
     }
 
