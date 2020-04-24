@@ -19,9 +19,9 @@ The first line contains an N representing how many lines follow.
 The next N lines each contains portions of names, then ends with an integer for grade.
 
 Constraints
-Input format is properly formed. Except the 1st, each other line contains:
-    .  At least 3 elements.
-    .  The last element is an integer (representing a grade).
+Input format is properly formed. Except the 1st line, each other line contains:
+    .  At least 2 elements.
+    .  Only the last element is an integer (representing a grade).
     .  No other element is an integer.
 
 Here's providing 2 implementations using and not using itertools.groupby
@@ -32,12 +32,13 @@ import itertools
 import io
 
 STDIN_SIO = io.StringIO("""
-5
+6
 f11 f12 f13 l1 1
 f2 l2 2
 f31 f32 l3 3
 f41 f42 f43 f44 l4 4
 f51 f52 l5 5
+f6 6
 """.strip())
 
 
@@ -60,7 +61,8 @@ def sublist_iterator_groupby(lst, pred):
     Yields
     ------
     list
-        A sublist (from list) such that predicate(last_element) == True
+        A sublist (from list) such that pred(all_except_last) == False,
+        followed by pred(last) == True
 
     Notes
     -----
@@ -77,13 +79,25 @@ def sublist_iterator_groupby(lst, pred):
     convert both to lists before concatenating then yielding.
     Why the 'if not tupl[0]'?
     To ensure we'd start out with pred(elem) == False;
-    i.e. skipping over initial elems whose pred(elem) == True
+    i.e. skipping over initial consecutive elems whose pred(elem) == True.
+    Why the complicated 2nd term in the yield expression?
+    next(itr)[1] is iterator-to-list of trailing elems whose pred(elem)==True.
+    If >1, we only want to return the first, hence next(next(itr)[1]) to pop
+    it out, then [next(next())] to make it a single-elem list before appending.
+    This is done to match the behavior of sublist_iterator() below.
 
     """
     itr = itertools.groupby(lst, pred)
     for tupl in itr:
         if not tupl[0]:
-            yield list(tupl[1]) + list(next(itr)[1])
+            #yield list(tupl[1]) + list(next(itr)[1])
+            #flst = list(tupl[1])
+            # VERY IMPORTANT: must process tupl *BEFORE* next(itr)
+            #tlst = list(next(itr)[1])
+            #print('flst:', flst, type(flst))
+            #print('tlst:', tlst, type(tlst), ', [0]:', tlst[0])
+            #yield flst + [tlst[0]]
+            yield list(tupl[1]) + [next(next(itr)[1])]
 
 
 def sublist_iterator(lst, pred):
@@ -91,7 +105,7 @@ def sublist_iterator(lst, pred):
     Partition a list into sublists with each sublist ends and contains
     the element whose predicate(element) == True.
     Each sublist is yielded as succesive calls to the returned iterator.
-    This function does NOT use itertools
+    This function is an alternate implementation WITHOUT using itertools.
 
     Parameters
     ----------
@@ -104,7 +118,8 @@ def sublist_iterator(lst, pred):
     Yields
     ------
     list
-        A sublist (from list) such that predicate(last_element) == True
+        A sublist (from list) such that pred(all_except_last) == False,
+        followed by pred(last) == True
 
     Notes
     -----
@@ -113,10 +128,20 @@ def sublist_iterator(lst, pred):
     till and including pred(elem) == True.
     Then yield the sublist.
     Once coming back for the next iteration, re-init the yield sublist to empty.
+    What's the skip_matched stuff?
+    To ensure we'd start out with pred(elem) == False;
+    i.e. skipping over initial consecutive elems whose pred(elem) == True.
+    Also, for consecutive elems whose pred(elem) == True, keep only the 1st.
 
     """
     ylst = []
+    skip_matched = True
     for elem in lst:
+        if skip_matched:
+            if pred(elem):
+                continue
+            else:
+                skip_matched = False
         if type(elem) is list:
             ylst.extend(elem)
         else:
@@ -124,6 +149,7 @@ def sublist_iterator(lst, pred):
         if pred(elem):
             yield ylst
             ylst = []
+            skip_matched = True
 
 
 def process(fname, lst):
@@ -148,7 +174,11 @@ def process(fname, lst):
         # then join the non-lastname to 1 string with spaces.
         # Making it a list in case needing to process further, or return
         # Alternately, can simply do: del(sublist[-2])
-        l2 = [' '.join(sublist[:-2]), sublist[-1]]
+        # len(sublist) < 3 means no lastname, so returning as-is
+        if len(sublist) < 3:
+            l2 = sublist
+        else:
+            l2 = [' '.join(sublist[:-2]), sublist[-1]]
         print(l2)
 
 
@@ -164,6 +194,10 @@ if __name__ == '__main__':
         lst.extend(names)
         lst.append(int(grade))
 
+    # Malformed lists to verify error handling
+    #lst = []                                           # empty list
+    #lst = [11, 12, 13] + lst                           # initial elems are ints
+    #lst = ['f1', 'l1', 1, 2, 3, 'f2', 'l2', 2]         # consecutive ints
     #print(lst)
 
     #process(sublist_iterator, lst)
