@@ -16,7 +16,7 @@
 //#include <experimental/iterator>	NOT working with GCC 4.8.5
 #include "tclap/CmdLine.h"
 
-#include "configManager.hh"
+//#include "configManager.hh"
 
 #if !defined(KEYSIZE)
 #define	KEYSIZE		24
@@ -119,7 +119,7 @@ process_config_file(const string &configFile)
     }
 
     // init configManager
-    ConfigManager::getInstance().setConfigPath(configFile.c_str());
+    //ConfigManager::getInstance().setConfigPath(configFile.c_str());
 }
 
 
