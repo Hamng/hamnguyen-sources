@@ -30,48 +30,43 @@ import itertools
 # 1. Before grouping, split a multiline string into list of lines:
 #    .strip().splitlines(): strip leading and trailing spaces
 #    if l.strip(): remove empty inner lines
-# 2. groupby() groups consecutive lines based on matched/unmatched such that:
-#    [[True , [list of consecutive   matched lines]],
-#     [False. [list of consecutive unmatched lines]],
+#    l.strip().split(' ', 1): split at the 1st space
+#    lst = [['Node:', 'foo'], ['Intf:', 'bar1'], ['Intf:', 'bar2'], ...]
+# 2. groupby() groups consecutive inner lists based on the 1st elem of each inner list:
+#    [['Node:'     , [list of consecutive inner lists whose 1st element is 'Node:'     ]],
+#     ['Interface:', [list of consecutive inner lists whose 1st element is 'Interface:']],
 #           ...
-#     [True , [list of consecutive   matched lines]],
-#     [False, [list of consecutive unmatched lines]]]
-# 3. Iterate thru elem yielded by groupby()
-# 4. If matched (e.g. elem[0]==True): use only the 1st matched line, split at the
-#    1st space, then yield as a list ['header_prefix', 'remainder of 1st matched line']
-# 5. If not matched (e.g. elem[0]==False):
-#    a. Split each unmatched lines at the 1st space to produce a list-of-lists
-#       l2 = [['Interface:', 'en0'], ['Interface:', 'anpi0'], ['Interface:', 'awdl0']]
-#    b. Assuming the 1st element of each inner list are the same, so use l2[0][0]
-#    c. And compose a list of all 2nd elements of the inner list => ['en0', 'anpi0', 'awdl0']
-#    d. Yield a list from b and c: ['Interface:', ['en0', 'anpi0', 'awdl0']]
-def list_of_header_or_body(multiline_str, header_prefix: str) -> List:
-    lst = [l.strip() for l in multiline_str.strip().splitlines() if l.strip()]
-    #print(*lst, sep='\n')
-    itr = itertools.groupby(lst, lambda s: s.startswith(header_prefix))
-    for elem in itr:
-        #print(i, elem[0])
-        if elem[0]:
-            yield next(elem[-1]).split(' ', 1)
-        else:
-            l2 = [s.split(' ', 1) for s in elem[-1]]
-            yield [l2[0][0], [e[-1] for e in l2]]
-
-
+#     ['Node:'     , [list of consecutive inner lists whose 1st element is 'Node:'     ]],
+#     ['Interface:', [list of consecutive inner lists whose 1st element is 'Interface:']]]
+# 3. Iterate thru the elements yielded by groupby()
+# 4. If the 1st element (k) matches; i.e. k == header_prefix:
+#    a. next(grp): use only the 1st of the inner lists
+#    b. next(grp)[1]: and only the 2nd element of that inner list.
+#    c. Form a new dct from k, and 4b => dct = {'node': 'HomePod.local.'}
+# 5. Else, if not matched:
+#    a. For all inner lists (in grp)
+#    b. (Assuming the 1st elements are all the same,)
+#       Form a list of all 2nd elements => ['en0', 'anpi0', 'awdl0', 'lo0']
+#    c. Update dct with a dict entry formed by k, and 5b
+#    d. Yield dct: {'node': 'HomePod.local.', 'interfaces': ['en0', 'anpi0', 'awdl0', 'lo0']}
+# 6. Caveat: header lines (at the end) NOT followed by body lines will be ignored.
+#
 def dict_of_group(multiline_str, header_prefix: str) -> Dict:
+    lst = [l.strip().split(' ', 1) for l in multiline_str.strip().splitlines() if l.strip()]
+    #print(*lst, sep='\n')
+    itr = itertools.groupby(lst, lambda e: e[0])
     # Init dct() to handle malformed body lines that aren't preceded by a header line
     dct = {}
-    for k, v in list_of_header_or_body(multiline_str, header_prefix):
-        #k, v = elem
-        #print(i, k, elem)
+    for k, grp in itr:
+        #print(f"['{k}', <", *list(grp), "> ]")
         if k == header_prefix:
             # Strip ':' at the end of k, then convert it lowercase. Then create a new dct
-            dct = {k[:-1].lower(): v}
+            dct = {k[:-1].lower(): next(grp)[1]}
         else:
             # Strip ':' at the end of k, then convert it lowercase. then append "s"
             # Then update to the existing dct.
             # Then yield dct
-            dct.update({k[:-1].lower() + "s": v})
+            dct.update({k[:-1].lower() + "s": [e[1] for e in grp]})
             yield dct
 
 
@@ -80,7 +75,8 @@ if __name__ == '__main__':
 
     Interface: malformed,
         Interface: NOT preceded by
-      Interface: a Node: line
+      Interface: a Node: line,
+       Interface: but still form a dict
 
   Node: HomePod (2).local.
    Interface: en0
@@ -96,7 +92,7 @@ Node:      since being fold into the 'header'
     Interface: awdl0
   Interface: lo0
 
-  Node: malformed, NOT followed by an Interface: line
+  Node: malformed, NOT followed by an Interface: line, will be ignored
 
 """
 
