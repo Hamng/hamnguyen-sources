@@ -5,6 +5,9 @@ Created on Thu Dec  8 15:20:45 2022
 
 @author: Ham Nguyen
 
+This is an example of how to use groupby() to group consecutive lines based
+on the 1st token in each line. (All blank lines are ignored.)
+
 Problem:
 Hi all, I have a command line tool that outputs a multi-line string
 and I’d like to parse it into a dict. Anyone have a nice way of doing so?
@@ -23,7 +26,7 @@ Output:
 
 """
 
-from typing import List, Dict
+from typing import Dict
 import itertools
 
 #
