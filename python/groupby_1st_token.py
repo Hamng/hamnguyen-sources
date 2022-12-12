@@ -26,7 +26,7 @@ Output:
 
 """
 
-from typing import Dict
+from typing import Dict, Iterator
 import itertools
 
 #
@@ -54,7 +54,7 @@ import itertools
 #    d. Yield dct: {'node': 'HomePod.local.', 'interfaces': ['en0', 'anpi0', 'awdl0', 'lo0']}
 # 6. Caveat: header lines (at the end) NOT followed by body lines will be ignored.
 #
-def dict_of_group(multiline_str, header_prefix: str) -> Dict:
+def dict_of_group(multiline_str, header_prefix: str) -> Iterator[Dict]:
     lst = [l.strip().split(' ', 1) for l in multiline_str.strip().splitlines() if l.strip()]
     #print(*lst, sep='\n')
     itr = itertools.groupby(lst, lambda e: e[0])
@@ -66,10 +66,10 @@ def dict_of_group(multiline_str, header_prefix: str) -> Dict:
             # Strip ':' at the end of k, then convert it lowercase. Then create a new dct
             dct = {k[:-1].lower(): next(grp)[1]}
         else:
-            # Strip ':' at the end of k, then convert it lowercase. then append "s"
+            # Strip ':' at the end of k, then append "s"
             # Then update to the existing dct.
-            # Then yield dct
-            dct.update({k[:-1].lower() + "s": [e[1] for e in grp]})
+            # Then yield the resulting dct
+            dct.update({k[:-1] + "s": [e[1] for e in grp]})
             yield dct
 
 
