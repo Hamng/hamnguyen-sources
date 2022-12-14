@@ -52,7 +52,6 @@ import itertools
 #       Form a list of all 2nd elements => ['en0', 'anpi0', 'awdl0', 'lo0']
 #    c. Update dct with a dict entry formed by k, and 5b
 #    d. Yield dct: {'node': 'HomePod.local.', 'interfaces': ['en0', 'anpi0', 'awdl0', 'lo0']}
-# 6. Caveat: header lines (at the end) NOT followed by body lines will be ignored.
 #
 def dict_of_group(multiline_str, header_prefix: str) -> Iterator[Dict]:
     lst = [l.strip().split(' ', 1) for l in multiline_str.strip().splitlines() if l.strip()]
@@ -69,8 +68,14 @@ def dict_of_group(multiline_str, header_prefix: str) -> Iterator[Dict]:
             # Strip ':' at the end of k, then append "s"
             # Then update to the existing dct.
             # Then yield the resulting dct
+            # And clear dct after yielding to handle a malformed header
             dct.update({k[:-1] + "s": [e[1] for e in grp]})
             yield dct
+            dct = {}
+
+    # Handle a malformed header that isn't followed by body lines
+    if dct:
+        yield dct
 
 
 if __name__ == '__main__':
@@ -95,7 +100,7 @@ Node:      since being fold into the 'header'
     Interface: awdl0
   Interface: lo0
 
-  Node: malformed, NOT followed by an Interface: line, will be ignored
+  Node: malformed, NOT followed by an Interface: line
 
 """
 
