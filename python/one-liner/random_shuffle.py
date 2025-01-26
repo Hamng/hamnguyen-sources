@@ -15,3 +15,6 @@ Better yet, use random.sample()
 
 python -c "import random; l=list(range(1,9)); random.shuffle(l); print(*l)"
 python -c "import random; print(random.sample(range(1,53), 52))"
+
+# Or, to get a list of N random integers between [min_int, max_int]
+python -c "import random; print(random.sample(range(min_int, max_int + 1), N))"

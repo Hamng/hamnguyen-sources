@@ -33,6 +33,8 @@ For conda users:
 
 conda install binarytree -c conda-forge
 
+(Fyi, that also installs lots of other packages)
+
 Also in HackerRank > Practice > Data Structures > Trees
 Tree: Level Order Traversal
 
