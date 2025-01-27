@@ -14,7 +14,7 @@ import time
 import random
 from multiprocessing import Pool
 
-__VERSION__ = "0.1"
+__VERSION__ = "0.2"
 
 _secs_to_sleep = random.sample(range(1, 6), 1)[0]
 
@@ -64,6 +64,8 @@ def parse_command_line(description: str=None):
                         help=f"              Seconds to sleep within each process, default={_secs_to_sleep}")
     parser.add_argument("--map", action="store_true", default=False,
                         help=f"              If specified, run the Map test, default=True")
+    parser.add_argument("--starmap", action="store_true", default=False,
+                        help=f"              If specified, run the Starmap test, default=False")
 
     # Let's parse it
     args = parser.parse_args()
@@ -90,6 +92,16 @@ def parse_command_line(description: str=None):
 
     return args
 
+def zip_len(cnt: int, *iterables):
+    """Return an iterator for cnt items from zip(*iterables)
+        (This is equivalent to list(zip(*iterables))[:cnt]
+        but WON'T waste time zipping ALL items, then toss away from [cnt:])
+        This iterator zip(*iterables) but STOPs when cnt exhausts
+    """
+    itr = zip(*iterables)
+    for _ in range(cnt):
+        yield itr.__next__()
+
 
 def square(x: int) -> int:
     """Calculates the square of a number."""
@@ -99,20 +111,72 @@ def square(x: int) -> int:
                                         # to be done within each process
     return x * x
 
+def multiply2(arg1, arg2):
+    """Multiplies two numbers."""
+    global _secs_to_sleep
 
-def test_map(num_workers: int=None, num_elements: int=None, starting: int=5):
-    # To make the list non-consecutive, randomize a much longer list of Nx values,
-    # then keep only the first 1x values
-    #numbers = list(range(starting, starting + (4 * num_elements)))
+    time.sleep(_secs_to_sleep)          # Sleep a while to simulate some work
+                                        # to be done within each process
+    return arg1 * arg2
+
+
+def test_map(num_workers: int=None, num_elements: int=None, min_int: int=5, scale: int=4):
+    """
+        Sample output:
+% python ./multi_pool.py --sleep 2 --map --d --count 11
+DEBUG: Workers: spawn Pool(processes=10)
+DEBUG:   Count: 11 elements to map
+DEBUG:   Sleep: 2 secs in each worker function
+
+INFO: ==============================    Map Test    ==============================
+INFO:  Numbers: 11#[18, 30, 40, 27, 19, 25, 17, 36, 47, 34, 5]
+INFO:  Squares: 11#[324, 900, 1600, 729, 361, 625, 289, 1296, 2209, 1156, 25]
+INFO:  Runtime: 5.3 seconds
+    """
+    # To make the list non-consecutive and non-repeating random values,
+    # shuffle() a much longer list of Nx values, then keep only the first 1x values
+    #numbers = list(range(min_int, min_int + (4 * num_elements)))
     #random.shuffle(numbers)
     #numbers = numbers[:num_elements]
     # Best: 1-liner below
-    numbers = random.sample(range(starting, starting + (4 * num_elements)), num_elements)
+    #numbers = random.sample(range(min_int, max_int + 1), num_elements)
+    # Cons of using 'max_int': if num_elements too large, .sample() will fail,
+    # so would need to increase 'max_int' to accomodate.
+    # So using >1 'scale' to control how wide the spread from 'min_int'
+    numbers = random.sample(range(min_int, min_int + (scale * num_elements)), num_elements)
+    logging.info(('=' * 30) + "    Map Test    " + ('=' * 30))
     logging.info(f" Numbers: {len(numbers)}#{numbers}")
     start_time = time.time()
     with Pool(processes=num_workers) as pool:
         results = pool.map(square, numbers)
         logging.info(f" Squares: {len(results)}#{results}")
+    logging.info(f" Runtime: {time.time() - start_time:.1f} seconds\n")
+
+def test_starmap(num_workers: int=None, num_elements: int=None, min_int: int=5, scale: int=4):
+    """
+% python ./multi_pool.py --sleep 2 --starmap --d --count 11
+DEBUG: Workers: spawn Pool(processes=10)
+DEBUG:   Count: 11 elements to map
+DEBUG:   Sleep: 2 secs in each worker function
+
+INFO: ==============================    Starmap Test    ==============================
+INFO:    Pairs: 11#[(5, 39), (39, 15), (13, 27), (36, 46), (46, 43), (15, 29), (27, 30), (29, 31), (43, 13), (31, 5), (30, 36)]
+INFO: Multiply: 11#[195, 585, 351, 1656, 1978, 435, 810, 899, 559, 155, 1080]
+INFO:  Runtime: 5.3 seconds
+    """
+    left_nums = random.sample(range(min_int, min_int + (scale * num_elements)), num_elements)
+    right_nums = left_nums[:]
+    random.shuffle(right_nums)
+    #pairs = list(zip(left_nums, right_nums))[:num_elements]
+    # Above wastes time zipping the entire lists, then keep only the first num_elements
+    # whereas zip_len() STOPs zipping at num_elements
+    pairs = list(zip_len(num_elements, left_nums, right_nums))
+    logging.info(('=' * 30) + "    Starmap Test    " + ('=' * 30))
+    logging.info(f"   Pairs: {len(pairs)}#{pairs}")
+    start_time = time.time()
+    with Pool(processes=num_workers) as pool:
+        results = pool.starmap(multiply2, pairs)
+        logging.info(f"Multiply: {len(results)}#{results}")
     logging.info(f" Runtime: {time.time() - start_time:.1f} seconds\n")
 
 
@@ -127,5 +191,7 @@ if __name__ == '__main__':
 
     if args.map or (len(sys.argv) < 2):
         test_map(num_workers=args.workers, num_elements=args.count)
+    elif args.starmap:
+        test_starmap(num_workers=args.workers, num_elements=args.count)
 
     #logging.info(f" Runtime: {time.time() - start_time:.1f} seconds")
