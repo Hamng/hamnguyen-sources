@@ -55,49 +55,6 @@ import json
 #    c. Update dct with a dict entry formed by k, and 5b
 #    d. Yield dct: {'node': 'HomePod.local.', 'interfaces': ['en0', 'anpi0', 'awdl0', 'lo0']}
 #
-def split_by_outer_header(a_str, header: str) -> Iterator[Dict]:
-    for e in re.split(header, a_str, re.MULTILINE):
-        if e:
-            l = e.strip().split(' ', 1)
-            #print(l)
-            #yield (l[0].strip(), [e1.strip() for e1 in l[1].strip().splitlines()])
-            yield (l[0].strip(), l[1].strip())
-        else:
-            continue
-
-def groupby_inner_item(s: str):
-    lst = [l.strip().split() for l in s.splitlines()]
-    #print(lst)
-    itr = itertools.groupby(lst, lambda l: len(l) == 1)
-    #print(list(itr))
-    for k, grp in itr:
-        if k:
-            item = next(grp)[0]
-        else:
-            yield (item, list(grp))
-
-def split_groupby(s, outer_header: str) -> Iterator[Dict]:
-    for outer_k, v in split_by_outer_header(s, outer_header):
-        #print(f'outer_k="{outer_k}", v="{v}"')
-        for inner_k, item in groupby_inner_item(v):
-            #print(f'\t\tinner_k="{inner_k}", item={len(item)}#{item}')
-            dct = {item[0][0][:-1]: item[0][1]}
-            if len(item) > 1:
-                dct.update({item[1][0]: item[1][2]})
-            #print(f'outer_k="{outer_k}",\tinner_k="{inner_k}", dct={len(dct)}#{dct}')
-            yield (outer_k, inner_k, dct)
-
-def dict1_of_group(s, outer_header: str):
-    dct = {}
-    for outer_k, inner_k, entry in split_groupby(s, outer_header):
-        if outer_k in dct:
-            dct[outer_k].update({inner_k: entry})
-        else:
-            dct[outer_k] =      {inner_k: entry}
-
-    return dct
-
-
 def groupby_list_len(lst: List, list_len: int) -> Iterator[Dict]:
     itr = itertools.groupby(lst, lambda l: len(l) == list_len)
     for k, grp in itr:
@@ -109,6 +66,41 @@ def groupby_list_len(lst: List, list_len: int) -> Iterator[Dict]:
         else:
             #print(f'{outer_k}: {list(grp)}')
             yield (outer_k, grp)
+
+def split_by_outer_header(a_str, header: str) -> Iterator[Dict]:
+    for e in re.split(header, a_str, re.MULTILINE):
+        if e:
+            l = e.strip().split(' ', 1)
+            #print(l)
+            #yield (l[0].strip(), [e1.strip() for e1 in l[1].strip().splitlines()])
+            yield (l[0].strip(), l[1].strip())
+        else:
+            continue
+
+def split_groupby(s, outer_header: str, inner_header_len: int) -> Iterator[Dict]:
+    for outer_k, v in split_by_outer_header(s, outer_header):
+        itr = (l.strip().split() for l in v.splitlines())
+        #print(f'outer_k="{outer_k}", itr={list(itr)}')
+        #itr = (l.strip().split() for l in v.splitlines())
+        for inner_k, itr2 in groupby_list_len(itr, inner_header_len):
+            lst = list(itr2)
+            #print(f'\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
+            dct = {lst[0][0][:-1]: lst[0][1]}
+            if len(lst) > 1:
+                dct.update({lst[1][0]: lst[1][2]})
+            #print(f'outer_k="{outer_k}",\tinner_k="{inner_k}", dct={len(dct)}#{dct}')
+            yield (outer_k, inner_k, dct)
+
+def dict1_of_group(s, outer_header: str, inner_header_len: int):
+    dct = {}
+    for outer_k, inner_k, entry in split_groupby(s, outer_header, inner_header_len):
+        if outer_k in dct:
+            dct[outer_k].update({inner_k: entry})
+        else:
+            dct[outer_k] =      {inner_k: entry}
+
+    return dct
+
 
 def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
     lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
@@ -215,9 +207,9 @@ Device: clvr
         temp_b2_buck0
             Instant: 28.01 deg C"""
 
-    dct1 = dict1_of_group(multiline_str, "Device:")
+    dct1 = dict1_of_group(multiline_str, "Device:", 1)
     #print(dct1)
-    #print(json.dumps(dct1, sort_keys=True, indent=4))
+    print(json.dumps(dct1, sort_keys=True, indent=4))
 
     dct2 = dict2_of_group(multiline_str,  2, 1)
-    print(json.dumps(dct2, sort_keys=True, indent=4))
+    #print(json.dumps(dct2, sort_keys=True, indent=4))
