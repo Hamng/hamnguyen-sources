@@ -1,29 +1,77 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Dec  8 15:20:45 2022
+Created on Thu Feb  6 18:10:44 2025
 
 @author: Ham Nguyen
 
 This is an example of how to use groupby() to group consecutive lines based
-on the 1st token in each line. (All blank lines are ignored.)
+on the number of words (or tokens) in each line. (All blank lines are ignored.)
 
 Problem:
-Hi all, I have a command line tool that outputs a multi-line string
-and I’d like to parse it into a dict. Anyone have a nice way of doing so?
-Input to parse:
-Node: HomePod (2).local.
-    Interface: en0
-    Interface: awdl0
-Node: HomePod.local.
-    Interface: en0
-    Interface: anpi0
-    Interface: awdl0
-    Interface: lo0
-Output:
-[{"node": "HomePod (2).local.", "Interfaces": ["en0", "awdl0"]},
- {"node": "HomePod.local.", "Interfaces": ["en0", "anpi0", "awdl0", "lo0"]}]
+Convert input to dict-of-dict
 
+Input to parse:
+Device: soc
+        Ta000
+            Instant: 29.17 deg C
+            Max    : 45.76 deg C
+        Ta001
+            Instant: 28.59 deg C
+            Max    : 44.96 deg C
+Device: pmu
+        TDIE_BUCK0
+            Instant: 28.17 deg C
+        TDIE_BUCK1
+            Instant: 27.53 deg C
+Device: pmu2
+        TDEV7
+            Instant: 24.91 deg C
+        TDEV8
+            Instant: 24.62 deg C
+Device: clvr
+        temp_a0_buck0
+            Instant: 28.93 deg C
+        temp_a1_buck0
+            Instant: 26.88 deg C
+
+Output:
+{
+    "clvr": {
+        "temp_a0_buck0": {
+            "Instant": "28.93"
+        },
+        "temp_a1_buck0": {
+            "Instant": "26.88"
+        },
+    },
+    "pmu": {
+        "TDIE_BUCK0": {
+            "Instant": "28.17"
+        },
+        "TDIE_BUCK1": {
+            "Instant": "27.53"
+        },
+    },
+    "pmu2": {
+        "TDEV7": {
+            "Instant": "24.91"
+        },
+        "TDEV8": {
+            "Instant": "24.62"
+        },
+    },
+    "soc": {
+        "Ta000": {
+            "Instant": "29.17",
+            "Max": "45.76"
+        },
+        "Ta001": {
+            "Instant": "28.59",
+            "Max": "44.96"
+        },
+    }
+}
 """
 
 from typing import Dict, Iterator, List
@@ -31,30 +79,6 @@ import itertools
 import re
 import json
 
-#
-# 1. Before grouping, split a multiline string into list of lines:
-#    .strip().splitlines(): strip leading and trailing spaces
-#    if l.strip(): remove empty inner lines
-#    l.strip().split(' ', 1): split at the 1st space
-#    lst = [['Node:', 'foo'], ['Intf:', 'bar1'], ['Intf:', 'bar2'], ...]
-# 2. groupby() groups consecutive inner lists based on the 1st elem of each inner list:
-#    [['Node:'     , [list of consecutive inner lists whose 1st element is 'Node:'     ]],
-#     ['Interface:', [list of consecutive inner lists whose 1st element is 'Interface:']],
-#           ...
-#     ['Node:'     , [list of consecutive inner lists whose 1st element is 'Node:'     ]],
-#     ['Interface:', [list of consecutive inner lists whose 1st element is 'Interface:']]]
-# 3. Iterate thru the elements yielded by groupby()
-# 4. If the 1st element (k) matches; i.e. k == header_prefix:
-#    a. next(grp): use only the 1st of the inner lists
-#    b. next(grp)[1]: and only the 2nd element of that inner list.
-#    c. Form a new dct from k, and 4b => dct = {'node': 'HomePod.local.'}
-# 5. Else, if not matched:
-#    a. For all inner lists (in grp)
-#    b. (Assuming the 1st elements are all the same,)
-#       Form a list of all 2nd elements => ['en0', 'anpi0', 'awdl0', 'lo0']
-#    c. Update dct with a dict entry formed by k, and 5b
-#    d. Yield dct: {'node': 'HomePod.local.', 'interfaces': ['en0', 'anpi0', 'awdl0', 'lo0']}
-#
 def groupby_list_len(lst: List, list_len: int) -> Iterator[Dict]:
     itr = itertools.groupby(lst, lambda l: len(l) == list_len)
     for k, grp in itr:
@@ -102,6 +126,64 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
     return dct
 
 
+# 1.Before grouping, split a multiline string s into list of lines:
+#   s.strip().splitlines(): strip leading+trailing spaces, then split to lines[]
+#   if l.strip(): remove empty in-between lines
+#   l.strip().split(): tokenize each line to list of tokens
+#   lst = [['Device:', 'soc'], ['Ta000'], ['Instant:', '29.17', 'deg', 'C'], ...]
+# 2.groupby_list_len() groups consecutive inner lists based on their lengths.
+#   Since only the "outer header" in each group has its len(['Device:', 'blah'])==2,
+#   the "for outer_k" loop would receive the following outer-tuples in sequence:
+#     ('soc',  [['Ta000'],          ['Instant:', ...], ['Max', ...], ...,
+#               ['Ts014'],          ['Instant:', ...], ['Max', ...]
+#              ])
+#     ('pmu',  [['TDIE_BUCK0'],     ['Instant:', ...], ...,
+#               ['TDEV8'],          ['Instant:', ...]
+#              ])
+#     ('pmu2', [['TDIE_BUCK0'],     ['Instant:', ...], ...,
+#               ['TDEV8'],          ['Instant:', ...]
+#              ])
+#     ('clvr', [['temp_a0_buck0'],  ['Instant:', ...], ...,
+#               ['temp_b2_buck0'],  ['Instant:', ...]
+#              ])
+# 3.groupby_list_len() groups the 2nd element of each outer-tuple based on their lengths.
+#   Since only the "inner header" in each group has its len(['Ta000']) == 1,
+#   the "for inner_k" loop would receive the following inner-tuples in sequence:
+#     outer_k='soc':
+#       ('Ta000',           [['Instant:', ...], ['Max', ...]])
+#       ...
+#       ('Ts014',           [['Instant:', ...], ['Max', ...]])
+#     outer_k='pmu':
+#       ('TDIE_BUCK0',      [['Instant:', ...]])
+#       ...
+#       ('TDEV8',           [['Instant:', ...]])
+#     outer_k='pmu2':
+#       ('TDIE_BUCK0',      [['Instant:', ...]])
+#       ...
+#       ('TDEV8',           [['Instant:', ...]])
+#     outer_k='clvr':
+#       ('temp_a0_buck0',   [['Instant:', ...]])
+#       ...
+#       ('temp_b2_buck0',   [['Instant:', ...]])
+# 4.From the 2nd element of each inner-tuple; e.g. [['Instant:', ...], ['Max', ...]],
+#   from the 1st (or only) sublist; e.g. ['Instant:', '51.28', 'deg', 'C'],
+#   use its 1st element as a key 'Instant' (with ending ':' stripped off),
+#   and its 2nd element (temperature) as the key's value '51.28',
+#   form a dictionary as: dct = {'Instant': '51.28'}
+# 5.And if the inner-tuple's 2nd-element has more than 1 sublists,
+#   then from the 2nd sublist; e.g. ['Max', ':', '45.76', 'deg', 'C'],
+#   again use its 1st element as a key 'Max',
+#   and its 3rd element (temperature) as the key's value '45.76',
+#   update the dictionary in step #4 with: {'Max': '45.76'}
+# 6.Yield a tuple to caller as:
+#       ('soc',	 'Ta000',           {'Instant': '29.17', 'Max': '45.76'})
+#       ...           
+#       ('soc',	 'Ts014',           {'Instant': '27.59', 'Max': '34.93'})
+#       ('pmu',	 'TDIE_BUCK0',      {'Instant': '28.17'})
+#       ...           
+#       ('pmu',	 'TDEV8',           {'Instant': '-20.19'})
+#       ...           
+#       ('clvr',	 'temp_b2_buck0',   {'Instant': '28.01'})
 def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
     lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
     #print(*lst, sep='\n')
@@ -115,6 +197,7 @@ def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator
                 dct.update({lst[1][0]: lst[1][2]})
             #print(f'outer_k="{outer_k}",\tinner_k="{inner_k}", dct={len(dct)}#{dct}')
             yield (outer_k, inner_k, dct)
+
 
 def dict2_of_group(s, outer_header_len, inner_header_len: int):
     dct = {}
@@ -209,7 +292,7 @@ Device: clvr
 
     dct1 = dict1_of_group(multiline_str, "Device:", 1)
     #print(dct1)
-    print(json.dumps(dct1, sort_keys=True, indent=4))
+    #print(json.dumps(dct1, sort_keys=True, indent=4))
 
-    dct2 = dict2_of_group(multiline_str,  2, 1)
-    #print(json.dumps(dct2, sort_keys=True, indent=4))
+    dct2 = dict2_of_group(multiline_str, 2, 1)
+    print(json.dumps(dct2, sort_keys=True, indent=4))
