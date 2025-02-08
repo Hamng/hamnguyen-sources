@@ -131,7 +131,7 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #   if l.strip(): remove empty in-between lines
 #   l.strip().split(): tokenize each line to list of tokens
 #   lst = [['Device:', 'soc'], ['Ta000'], ['Instant:', '29.17', 'deg', 'C'], ...]
-# 2.groupby_list_len() groups consecutive inner lists based on their lengths.
+# 2.The outer groupby_list_len() groups consecutive sublists based on their lengths.
 #   Since only the "outer header" in each group has its len(['Device:', 'blah'])==2,
 #   the "for outer_k" loop would receive the following outer-tuples in sequence:
 #     ('soc',  [['Ta000'],          ['Instant:', ...], ['Max', ...], ...,
@@ -146,7 +146,8 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #     ('clvr', [['temp_a0_buck0'],  ['Instant:', ...], ...,
 #               ['temp_b2_buck0'],  ['Instant:', ...]
 #              ])
-# 3.groupby_list_len() groups the 2nd element of each outer-tuple based on their lengths.
+# 3.For each outer-tuple above, the inner groupby_list_len() groups
+#   the 2nd element of each outer-tuple based on their lengths.
 #   Since only the "inner header" in each group has its len(['Ta000']) == 1,
 #   the "for inner_k" loop would receive the following inner-tuples in sequence:
 #     outer_k='soc':
@@ -166,16 +167,18 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #       ...
 #       ('temp_b2_buck0',   [['Instant:', ...]])
 # 4.From the 2nd element of each inner-tuple; e.g. [['Instant:', ...], ['Max', ...]],
-#   from the 1st (or only) sublist; e.g. ['Instant:', '51.28', 'deg', 'C'],
-#   use its 1st element as a key 'Instant' (with ending ':' stripped off),
-#   and its 2nd element (temperature) as the key's value '51.28',
-#   form a dictionary as: dct = {'Instant': '51.28'}
+#   then from the 1st (or only) sublist; e.g. ['Instant:', '51.28', 'deg', 'C'],
+#   form a dictionary with:
+#  4a.  Key is the 1st element (with the ending ':' stripped off) = 'Instant'
+#  4b.  Value is the 2nd element (temperature) = '51.28'
+#  4c.  New dictionary: dct = {'Instant': '51.28'}
 # 5.And if the inner-tuple's 2nd-element has more than 1 sublists,
 #   then from the 2nd sublist; e.g. ['Max', ':', '45.76', 'deg', 'C'],
-#   again use its 1st element as a key 'Max',
-#   and its 3rd element (temperature) as the key's value '45.76',
-#   update the dictionary in step #4 with: {'Max': '45.76'}
-# 6.Yield a tuple to caller as:
+#   form a {key: value} pair:
+#  5a.  Key is the 1st element = 'Max'
+#  5b.  Value is the 3rd element (temperature) = '45.76'
+#  5c.  Add/update the dictionary in step #4 with: {'Max': '45.76'}
+# 6.For each outer_k, and inner_ iteration, yield a tuple to the caller as:
 #       ('soc',	 'Ta000',           {'Instant': '29.17', 'Max': '45.76'})
 #       ...           
 #       ('soc',	 'Ts014',           {'Instant': '27.59', 'Max': '34.93'})
@@ -209,6 +212,49 @@ def dict2_of_group(s, outer_header_len, inner_header_len: int):
 
     return dct
 
+
+# Re-implement groupby_list_len() but NOT using itertools.groupby()
+def groupby_list_len_alt(lst: List, list_len: int) -> Iterator[Dict]:
+    left_elem  = None
+    right_list = []
+    for l in lst:
+        if len(l) == list_len:
+            if left_elem or right_list:
+                yield (left_elem, right_list)
+
+            left_elem  = l[-1]
+            right_list = []
+
+        else:
+            right_list.append(l)
+
+    if left_elem or right_list:
+        yield (left_elem, right_list)
+
+
+def groupby_groupby_alt(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
+    lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
+    #print(*lst, sep='\n')
+    for outer_k, itr in groupby_list_len_alt(lst, outer_header_len):
+        #print(f'outer_k="{outer_k}", itr={list(itr)}')
+        for inner_k, itr2 in groupby_list_len_alt(itr, inner_header_len):
+            lst = list(itr2)
+            #print(f'\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
+            dct = {lst[0][0][:-1]: lst[0][1]}
+            if len(lst) > 1:
+                dct.update({lst[1][0]: lst[1][2]})
+            #print(f'outer_k="{outer_k}",\tinner_k="{inner_k}", dct={len(dct)}#{dct}')
+            yield (outer_k, inner_k, dct)
+
+def dict2_of_group_alt(s, outer_header_len, inner_header_len: int):
+    dct = {}
+    for outer_k, inner_k, entry in groupby_groupby_alt(s, outer_header_len, inner_header_len):
+        if outer_k in dct:
+            dct[outer_k].update({inner_k: entry})
+        else:
+            dct[outer_k] =      {inner_k: entry}
+
+    return dct
 
 
 if __name__ == '__main__':
@@ -295,4 +341,8 @@ Device: clvr
     #print(json.dumps(dct1, sort_keys=True, indent=4))
 
     dct2 = dict2_of_group(multiline_str, 2, 1)
-    print(json.dumps(dct2, sort_keys=True, indent=4))
+    #print(json.dumps(dct2, sort_keys=True, indent=4))
+
+    dct2_alt = dict2_of_group_alt(multiline_str, 2, 1)
+    print(json.dumps(dct2_alt, sort_keys=True, indent=4))
+    #print(dct2_alt)
