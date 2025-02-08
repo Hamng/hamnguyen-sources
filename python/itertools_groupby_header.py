@@ -74,34 +74,125 @@ Output:
 }
 """
 
-from typing import Dict, Iterator, List
+from typing import Dict, Iterator, List, Tuple
 import itertools
 import re
 import json
 
-def groupby_list_len(lst: List, list_len: int) -> Iterator[Dict]:
+def groupby_list_len(lst: List, list_len: int) -> Tuple[str, List]:
+    """
+    From the given list-of-lists lst, and list_len, group consecutive
+    sublists based on their length, then yield a tuple on succesive calls.
+
+    Parameters
+    ----------
+    lst : List
+        The list-of-lists to be grouped based on list_len.
+    list_len : int
+        Length to group the sublists
+
+    Yields
+    ------
+    Tuple[str, List]
+        [0]: last element of the last sublist whose len(l) == list_len
+        [1]: iterator to the remaining sublists whose length doesn't match
+
+    Examples
+    --------
+    list_len==1 for all examples
+    1. Normal: lst = [[a], [b, c], [d, e, f], [g, h], [i], [j, k]]
+        (a, [[b, c], [d, e, f], [g, h]])
+        (i, [[j, k]])
+    2. Ok: lst = [[a], [b], [c], [d, e, f], [g, h], [i], [j, k]]
+        (c, [[d, e, f], [g, h]])
+        (i, [[j, k]])
+    3. Ok list_len==2: lst = [[a, b], [c, d], [e], [f, g, h], [i, j, k]]
+        (d, [[e], [f, g, h], [i, j, k]])
+    4. ERROR: lst = [[a, b, c], [d, e, f], [g, h], [i], [j, k]]
+        (None, [[a, b, c], [d, e, f], [g, h]])
+        (i, [[j, k]])
+    5. Dropped: lst = [[a], [b, c], [d, e, f], [g, h], [i], [j], [k]]
+        (a, [[b, c], [d, e, f], [g, h]])
+        Dropped: [i], [j], [k]
+
+    """
+    # Must init outer_k=None here to handle the case when there're some
+    # unmatched lists before the very 1st list whose len(l) == list_len
+    # In that case, the 1st yield will yield (None, iterator)
+    outer_k = None
     itr = itertools.groupby(lst, lambda l: len(l) == list_len)
     for k, grp in itr:
         #print(f"['{k}', <", *list(grp), "> ]")
         if k:
             #l = next(grp)
             #print(f' {k}: {len(l)}#{l}')
-            outer_k = next(grp)[-1]
+            # There could be many consecutive matches;
+            # e.g. [["Device:", "soc"], ["Device:", "clvr"]], or [["Ta001"], ["Ts014"]]
+            # So pick the last element of the last list; e.g. "clvr", or "Ts014"
+            #outer_k = next(grp)[-1]
+            outer_k = list(grp)[-1][-1]
         else:
-            #print(f'{outer_k}: {list(grp)}')
+            #l = list(grp)
+            #print(f'{list_len}#{outer_k}: {l}')
+            #yield (outer_k, l)
             yield (outer_k, grp)
 
-def split_by_outer_header(a_str, header: str) -> Iterator[Dict]:
-    for e in re.split(header, a_str, re.MULTILINE):
+    # An alternative to Example #5:
+    # 1.Before the "for" loop, init: k = False
+    # 2.Here, end of "for" loop:
+    #if k:
+    #    yield (outer_k, [])
+    # 3.That changes example #5 to:
+    # 5.ERROR: lst = [[a], [b, c], [d, e, f], [g, h], [i], [j], [k]]
+    #       (a, [[b, c], [d, e, f], [g, h]])
+    #       (k, [])
+
+
+def split_by_outer_header(a_str: str, pattern: str) -> Tuple[str, str]:
+    """
+    Split a multiline string then yield each substring as a tuple
+
+    Parameters
+    ----------
+    a_str : str
+        A string to be splitted
+    pattern : str
+        Pattern to split a_str
+
+    Yields
+    ------
+    Tuple[str, str]
+        [0]: 1st token of each substring
+        [1]: remainder of a substring
+
+    Examples
+    --------
+    1. a_str="Dev: soc 1 2 3\nDev: pmu 4 5\nDev: clvr 6 7 8 9"
+    2. re.split("Dev:", a_str) -> [" soc 1 2 3\n", " pmu 4 5\n", " clvr 6 7 8 9"]
+    3. In the "for" loop: e = e.strip() -> e = "soc 1 2 3"
+    4. e.split(' ', 1) -> l = ["soc", "1 2 3"]
+    5. Successive calls will yield:
+        ("soc", "1 2 3")
+        ("pmu", "4 5")
+        ("clvr", "6 7 8 9")
+
+    """
+    for e in re.split(pattern, a_str, re.MULTILINE):
+        e = e.strip()
         if e:
-            l = e.strip().split(' ', 1)
+            l = e.split(' ', 1)
             #print(l)
             #yield (l[0].strip(), [e1.strip() for e1 in l[1].strip().splitlines()])
             yield (l[0].strip(), l[1].strip())
         else:
+            # Handle the corner cases:
+            # a. pattern is at the begin of a_str, with 0 or more whitespaces
+            #    preceding it; e.g. a_str="Dev: ...", or a_str="   Dev: ..."
+            # b. pattern is at the end   of a_str, with 0 or more whitespaces
+            #    following it; e.g. a_str="... Dev:", or a_str="... Dev:  "
             continue
 
-def split_groupby(s, outer_header: str, inner_header_len: int) -> Iterator[Dict]:
+def split_groupby(s: str, outer_header: str, inner_header_len: int) -> Iterator[Dict]:
     for outer_k, v in split_by_outer_header(s, outer_header):
         itr = (l.strip().split() for l in v.splitlines())
         #print(f'outer_k="{outer_k}", itr={list(itr)}')
@@ -194,7 +285,7 @@ def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator
         #print(f'outer_k="{outer_k}", itr={list(itr)}')
         for inner_k, itr2 in groupby_list_len(itr, inner_header_len):
             lst = list(itr2)
-            #print(f'\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
+            #print(f'\t\t\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
             dct = {lst[0][0][:-1]: lst[0][1]}
             if len(lst) > 1:
                 dct.update({lst[1][0]: lst[1][2]})
@@ -213,22 +304,45 @@ def dict2_of_group(s, outer_header_len, inner_header_len: int):
     return dct
 
 
-# Re-implement groupby_list_len() but NOT using itertools.groupby()
-def groupby_list_len_alt(lst: List, list_len: int) -> Iterator[Dict]:
+# Same as groupby_list_len() but NOT using itertools.groupby()
+# Except for example #5:
+#   5. ERROR: lst = [[a], [b, c], [d, e, f], [g, h], [i], [j], [k]]
+#       (a, [[b, c], [d, e, f], [g, h]])
+#       (k, [])
+def groupby_list_len_alt(lst: List, list_len: int) -> Iterator[Tuple[str, List]]:
+    # Must init left_elem=None here to handle the case when there're some
+    # unmatched lists before the very 1st list whose len(l) == list_len
+    # In that case, the 1st yield will yield (None, iterator)
     left_elem  = None
     right_list = []
     for l in lst:
         if len(l) == list_len:
-            if left_elem or right_list:
+            if right_list:
+                # If in the middle of multiple consecutive matches,
+                # don't yield anything since right_list was set to []
+                # after the 1st match of a series of consecutive matches.
+                # e.g. unmatched, match1, yield, match2, match3
+                # Also, see note below
                 yield (left_elem, right_list)
 
-            left_elem  = l[-1]
+            left_elem = l[-1]
+
+            # Since right_list=[] on each match, effectively, only the last
+            # element of the LAST match (before the 1st unmatched) is kept
+            # e.g. [["Device:", "soc"], ["Device:", "clvr"]], or [["Ta001"], ["Ts014"]]
+            # Only "clvr", or "Ts014" is kept for the next yield
             right_list = []
 
         else:
+            # Accumulate the list of unmatches
             right_list.append(l)
 
     if left_elem or right_list:
+        # a.If both are boolean True: yield the last match(es), together with
+        #   the ending accumulation of unmatches => normal case.
+        # b.If only left_elem is boolean True: no unmatched following the last match(es).
+        #   Most likely an error case.
+        # c.If only right_list is boolean True: entire lst unmatched => error
         yield (left_elem, right_list)
 
 
@@ -239,7 +353,7 @@ def groupby_groupby_alt(s: str, outer_header_len, inner_header_len: int) -> Iter
         #print(f'outer_k="{outer_k}", itr={list(itr)}')
         for inner_k, itr2 in groupby_list_len_alt(itr, inner_header_len):
             lst = list(itr2)
-            #print(f'\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
+            #print(f'\t\t\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
             dct = {lst[0][0][:-1]: lst[0][1]}
             if len(lst) > 1:
                 dct.update({lst[1][0]: lst[1][2]})
@@ -337,12 +451,12 @@ Device: clvr
             Instant: 28.01 deg C"""
 
     dct1 = dict1_of_group(multiline_str, "Device:", 1)
-    #print(dct1)
-    #print(json.dumps(dct1, sort_keys=True, indent=4))
+    print('dct1 =', json.dumps(dct1, sort_keys=True, indent=4))
 
     dct2 = dict2_of_group(multiline_str, 2, 1)
-    #print(json.dumps(dct2, sort_keys=True, indent=4))
+    print('dct2 =', json.dumps(dct2, sort_keys=True, indent=4))
 
     dct2_alt = dict2_of_group_alt(multiline_str, 2, 1)
-    print(json.dumps(dct2_alt, sort_keys=True, indent=4))
-    #print(dct2_alt)
+    print('dct2_alt =', json.dumps(dct2_alt, sort_keys=True, indent=4))
+    # MicroPython json.dumps() doesn't do much, so use print()
+    #print('dct2_alt =', dct2_alt)
