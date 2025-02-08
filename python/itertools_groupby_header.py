@@ -74,12 +74,12 @@ Output:
 }
 """
 
-#from typing import Dict, Iterator, List
-#import itertools
+from typing import Dict, Iterator, List
+import itertools
 import re
-#import json
+import json
 
-def groupby_list_len(lst, list_len: int):
+def groupby_list_len(lst: List, list_len: int) -> Iterator[Dict]:
     itr = itertools.groupby(lst, lambda l: len(l) == list_len)
     for k, grp in itr:
         #print(f"['{k}', <", *list(grp), "> ]")
@@ -91,7 +91,7 @@ def groupby_list_len(lst, list_len: int):
             #print(f'{outer_k}: {list(grp)}')
             yield (outer_k, grp)
 
-def split_by_outer_header(a_str, header: str):
+def split_by_outer_header(a_str, header: str) -> Iterator[Dict]:
     for e in re.split(header, a_str, re.MULTILINE):
         if e:
             l = e.strip().split(' ', 1)
@@ -101,7 +101,7 @@ def split_by_outer_header(a_str, header: str):
         else:
             continue
 
-def split_groupby(s, outer_header: str, inner_header_len: int):
+def split_groupby(s, outer_header: str, inner_header_len: int) -> Iterator[Dict]:
     for outer_k, v in split_by_outer_header(s, outer_header):
         itr = (l.strip().split() for l in v.splitlines())
         #print(f'outer_k="{outer_k}", itr={list(itr)}')
@@ -179,15 +179,15 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #  5b.  Value is the 3rd element (temperature) = '45.76'
 #  5c.  Add/update the dictionary in step #4 with: {'Max': '45.76'}
 # 6.For each outer_k, and inner_ iteration, yield a tuple to the caller as:
-#       ('soc',  'Ta000',           {'Instant': '29.17', 'Max': '45.76'})
+#       ('soc',	 'Ta000',           {'Instant': '29.17', 'Max': '45.76'})
 #       ...           
-#       ('soc',  'Ts014',           {'Instant': '27.59', 'Max': '34.93'})
-#       ('pmu',  'TDIE_BUCK0',      {'Instant': '28.17'})
+#       ('soc',	 'Ts014',           {'Instant': '27.59', 'Max': '34.93'})
+#       ('pmu',	 'TDIE_BUCK0',      {'Instant': '28.17'})
 #       ...           
-#       ('pmu',  'TDEV8',           {'Instant': '-20.19'})
+#       ('pmu',	 'TDEV8',           {'Instant': '-20.19'})
 #       ...           
-#       ('clvr', 'temp_b2_buck0',   {'Instant': '28.01'})
-def groupby_groupby(s: str, outer_header_len, inner_header_len: int):
+#       ('clvr',	 'temp_b2_buck0',   {'Instant': '28.01'})
+def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
     lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
     #print(*lst, sep='\n')
     for outer_k, itr in groupby_list_len(lst, outer_header_len):
@@ -214,7 +214,7 @@ def dict2_of_group(s, outer_header_len, inner_header_len: int):
 
 
 # Re-implement groupby_list_len() but NOT using itertools.groupby()
-def groupby_list_len_alt(lst, list_len: int):
+def groupby_list_len_alt(lst: List, list_len: int) -> Iterator[Dict]:
     left_elem  = None
     right_list = []
     for l in lst:
@@ -232,7 +232,7 @@ def groupby_list_len_alt(lst, list_len: int):
         yield (left_elem, right_list)
 
 
-def groupby_groupby_alt(s: str, outer_header_len, inner_header_len: int):
+def groupby_groupby_alt(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
     lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
     #print(*lst, sep='\n')
     for outer_k, itr in groupby_list_len_alt(lst, outer_header_len):
@@ -336,13 +336,13 @@ Device: clvr
         temp_b2_buck0
             Instant: 28.01 deg C"""
 
-    #dct1 = dict1_of_group(multiline_str, "Device:", 1)
+    dct1 = dict1_of_group(multiline_str, "Device:", 1)
     #print(dct1)
     #print(json.dumps(dct1, sort_keys=True, indent=4))
 
-    #dct2 = dict2_of_group(multiline_str, 2, 1)
+    dct2 = dict2_of_group(multiline_str, 2, 1)
     #print(json.dumps(dct2, sort_keys=True, indent=4))
 
     dct2_alt = dict2_of_group_alt(multiline_str, 2, 1)
-    #print(json.dumps(dct2_alt, sort_keys=True, indent=4))
-    print(dct2_alt)
+    print(json.dumps(dct2_alt, sort_keys=True, indent=4))
+    #print(dct2_alt)
