@@ -179,14 +179,14 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #  5b.  Value is the 3rd element (temperature) = '45.76'
 #  5c.  Add/update the dictionary in step #4 with: {'Max': '45.76'}
 # 6.For each outer_k, and inner_ iteration, yield a tuple to the caller as:
-#       ('soc',	 'Ta000',           {'Instant': '29.17', 'Max': '45.76'})
+#       ('soc',  'Ta000',           {'Instant': '29.17', 'Max': '45.76'})
 #       ...           
-#       ('soc',	 'Ts014',           {'Instant': '27.59', 'Max': '34.93'})
-#       ('pmu',	 'TDIE_BUCK0',      {'Instant': '28.17'})
+#       ('soc',  'Ts014',           {'Instant': '27.59', 'Max': '34.93'})
+#       ('pmu',  'TDIE_BUCK0',      {'Instant': '28.17'})
 #       ...           
-#       ('pmu',	 'TDEV8',           {'Instant': '-20.19'})
+#       ('pmu',  'TDEV8',           {'Instant': '-20.19'})
 #       ...           
-#       ('clvr',	 'temp_b2_buck0',   {'Instant': '28.01'})
+#       ('clvr', 'temp_b2_buck0',   {'Instant': '28.01'})
 def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
     lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
     #print(*lst, sep='\n')
