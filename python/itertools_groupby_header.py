@@ -12,61 +12,61 @@ Problem:
 Convert input to dict-of-dict
 
 Input to parse:
-Device: soc
-        Ta000
+Device: subsy1
+        X_sensor_0
             Instant: 29.17 deg C
             Max    : 45.76 deg C
-        Ta001
+        X_sensor_1
             Instant: 28.59 deg C
             Max    : 44.96 deg C
-Device: pmu
-        TDIE_BUCK0
+Device: s_sys6
+        tdb_0
             Instant: 28.17 deg C
-        TDIE_BUCK1
+        tdb_1
             Instant: 27.53 deg C
-Device: pmu2
-        TDEV7
+Device: s_sys1
+        tv7
             Instant: 24.91 deg C
-        TDEV8
+        tv8
             Instant: 24.62 deg C
-Device: clvr
-        temp_a0_buck0
+Device: subsys2
+        x_temp0
             Instant: 28.93 deg C
-        temp_a1_buck0
+        x_temp1
             Instant: 26.88 deg C
 
 Output:
 {
-    "clvr": {
-        "temp_a0_buck0": {
+    "subsys2": {
+        "x_temp0": {
             "Instant": "28.93"
         },
-        "temp_a1_buck0": {
+        "x_temp1": {
             "Instant": "26.88"
         },
     },
-    "pmu": {
-        "TDIE_BUCK0": {
+    "s_sys6": {
+        "tdb_0": {
             "Instant": "28.17"
         },
-        "TDIE_BUCK1": {
+        "tdb_1": {
             "Instant": "27.53"
         },
     },
-    "pmu2": {
-        "TDEV7": {
+    "s_sys1": {
+        "tv7": {
             "Instant": "24.91"
         },
-        "TDEV8": {
+        "tv8": {
             "Instant": "24.62"
         },
     },
-    "soc": {
-        "Ta000": {
+    "subsy1": {
+        "X_sensor_0": {
             "Instant": "29.17",
             "Max": "45.76"
         },
-        "Ta001": {
+        "X_sensor_1": {
             "Instant": "28.59",
             "Max": "44.96"
         },
@@ -127,8 +127,8 @@ def groupby_list_len(lst: List, list_len: int) -> Tuple[str, List]:
             #l = next(grp)
             #print(f' {k}: {len(l)}#{l}')
             # There could be many consecutive matches;
-            # e.g. [["Device:", "soc"], ["Device:", "clvr"]], or [["Ta001"], ["Ts014"]]
-            # So pick the last element of the last list; e.g. "clvr", or "Ts014"
+            # e.g. [["Device:", "subsy1"], ["Device:", "subsys2"]], or [["X_sensor_1"], ["V_sensr_14"]]
+            # So pick the last element of the last list; e.g. "subsys2", or "V_sensr_14"
             #outer_k = next(grp)[-1]
             outer_k = list(grp)[-1][-1]
         else:
@@ -167,14 +167,14 @@ def split_by_outer_header(a_str: str, pattern: str) -> Tuple[str, str]:
 
     Examples
     --------
-    1. a_str="Dev: soc 1 2 3\nDev: pmu 4 5\nDev: clvr 6 7 8 9"
-    2. re.split("Dev:", a_str) -> [" soc 1 2 3\n", " pmu 4 5\n", " clvr 6 7 8 9"]
-    3. In the "for" loop: e = e.strip() -> e = "soc 1 2 3"
-    4. e.split(' ', 1) -> l = ["soc", "1 2 3"]
+    1. a_str="Dev: subsy1 1 2 3\nDev: s_sys6 4 5\nDev: subsys2 6 7 8 9"
+    2. re.split("Dev:", a_str) -> [" subsy1 1 2 3\n", " s_sys6 4 5\n", " subsys2 6 7 8 9"]
+    3. In the "for" loop: e = e.strip() -> e = "subsy1 1 2 3"
+    4. e.split(' ', 1) -> l = ["subsy1", "1 2 3"]
     5. Successive calls will yield:
-        ("soc", "1 2 3")
-        ("pmu", "4 5")
-        ("clvr", "6 7 8 9")
+        ("subsy1", "1 2 3")
+        ("s_sys6", "4 5")
+        ("subsys2", "6 7 8 9")
 
     """
     for e in re.split(pattern, a_str, re.MULTILINE):
@@ -221,42 +221,42 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #   s.strip().splitlines(): strip leading+trailing spaces, then split to lines[]
 #   if l.strip(): remove empty in-between lines
 #   l.strip().split(): tokenize each line to list of tokens
-#   lst = [['Device:', 'soc'], ['Ta000'], ['Instant:', '29.17', 'deg', 'C'], ...]
+#   lst = [['Device:', 'subsy1'], ['X_sensor_0'], ['Instant:', '29.17', 'deg', 'C'], ...]
 # 2.The outer groupby_list_len() groups consecutive sublists based on their lengths.
 #   Since only the "outer header" in each group has its len(['Device:', 'blah'])==2,
 #   the "for outer_k" loop would receive the following outer-tuples in sequence:
-#     ('soc',  [['Ta000'],          ['Instant:', ...], ['Max', ...], ...,
-#               ['Ts014'],          ['Instant:', ...], ['Max', ...]
-#              ])
-#     ('pmu',  [['TDIE_BUCK0'],     ['Instant:', ...], ...,
-#               ['TDEV8'],          ['Instant:', ...]
-#              ])
-#     ('pmu2', [['TDIE_BUCK0'],     ['Instant:', ...], ...,
-#               ['TDEV8'],          ['Instant:', ...]
-#              ])
-#     ('clvr', [['temp_a0_buck0'],  ['Instant:', ...], ...,
-#               ['temp_b2_buck0'],  ['Instant:', ...]
-#              ])
+#     ('subsy1',  [['X_sensor_0'],  ['Instant:', ...], ['Max', ...], ...,
+#                  ['V_sensr_14'],  ['Instant:', ...], ['Max', ...]
+#                 ])
+#     ('s_sys6',  [['tdb_0'],       ['Instant:', ...], ...,
+#                  ['tv8'],         ['Instant:', ...]
+#                 ])
+#     ('s_sys1',  [['tdb_0'],       ['Instant:', ...], ...,
+#                  ['tv8'],         ['Instant:', ...]
+#                 ])
+#     ('subsys2', [['x_temp0'],     ['Instant:', ...], ...,
+#                  ['s_temp2'],     ['Instant:', ...]
+#                 ])
 # 3.For each outer-tuple above, the inner groupby_list_len() groups
 #   the 2nd element of each outer-tuple based on their lengths.
-#   Since only the "inner header" in each group has its len(['Ta000']) == 1,
+#   Since only the "inner header" in each group has its len(['X_sensor_0']) == 1,
 #   the "for inner_k" loop would receive the following inner-tuples in sequence:
-#     outer_k='soc':
-#       ('Ta000',           [['Instant:', ...], ['Max', ...]])
+#     outer_k='subsy1':
+#       ('X_sensor_0',  [['Instant:', ...], ['Max', ...]])
 #       ...
-#       ('Ts014',           [['Instant:', ...], ['Max', ...]])
-#     outer_k='pmu':
-#       ('TDIE_BUCK0',      [['Instant:', ...]])
+#       ('V_sensr_14',  [['Instant:', ...], ['Max', ...]])
+#     outer_k='s_sys6':
+#       ('tdb_0',       [['Instant:', ...]])
 #       ...
-#       ('TDEV8',           [['Instant:', ...]])
-#     outer_k='pmu2':
-#       ('TDIE_BUCK0',      [['Instant:', ...]])
+#       ('tv8',         [['Instant:', ...]])
+#     outer_k='s_sys1':
+#       ('tdb_0',       [['Instant:', ...]])
 #       ...
-#       ('TDEV8',           [['Instant:', ...]])
-#     outer_k='clvr':
-#       ('temp_a0_buck0',   [['Instant:', ...]])
+#       ('tv8',         [['Instant:', ...]])
+#     outer_k='subsys2':
+#       ('x_temp0',     [['Instant:', ...]])
 #       ...
-#       ('temp_b2_buck0',   [['Instant:', ...]])
+#       ('s_temp2',     [['Instant:', ...]])
 # 4.From the 2nd element of each inner-tuple; e.g. [['Instant:', ...], ['Max', ...]],
 #   then from the 1st (or only) sublist; e.g. ['Instant:', '51.28', 'deg', 'C'],
 #   form a dictionary with:
@@ -270,14 +270,14 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #  5b.  Value is the 3rd element (temperature) = '45.76'
 #  5c.  Add/update the dictionary in step #4 with: {'Max': '45.76'}
 # 6.For each outer_k, and inner_ iteration, yield a tuple to the caller as:
-#       ('soc',  'Ta000',           {'Instant': '29.17', 'Max': '45.76'})
+#       ('subsy1',  'X_sensor_0',   {'Instant': '29.17', 'Max': '45.76'})
 #       ...           
-#       ('soc',  'Ts014',           {'Instant': '27.59', 'Max': '34.93'})
-#       ('pmu',  'TDIE_BUCK0',      {'Instant': '28.17'})
+#       ('subsy1',  'V_sensr_14',   {'Instant': '27.59', 'Max': '34.93'})
+#       ('s_sys6',  'tdb_0',        {'Instant': '28.17'})
 #       ...           
-#       ('pmu',  'TDEV8',           {'Instant': '-20.19'})
+#       ('s_sys6',  'tv8',          {'Instant': '-20.19'})
 #       ...           
-#       ('clvr', 'temp_b2_buck0',   {'Instant': '28.01'})
+#       ('subsys2', 's_temp2',      {'Instant': '28.01'})
 def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
     lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
     #print(*lst, sep='\n')
@@ -329,8 +329,8 @@ def groupby_list_len_alt(lst: List, list_len: int) -> Iterator[Tuple[str, List]]
 
             # Since right_list=[] on each match, effectively, only the last
             # element of the LAST match (before the 1st unmatched) is kept
-            # e.g. [["Device:", "soc"], ["Device:", "clvr"]], or [["Ta001"], ["Ts014"]]
-            # Only "clvr", or "Ts014" is kept for the next yield
+            # e.g. [["Device:", "subsy1"], ["Device:", "subsys2"]], or [["X_sensor_1"], ["V_sensr_14"]]
+            # Only "subsys2", or "V_sensr_14" is kept for the next yield
             right_list = []
 
         else:
@@ -372,82 +372,82 @@ def dict2_of_group_alt(s, outer_header_len, inner_header_len: int):
 
 
 if __name__ == '__main__':
-    multiline_str = """Device: soc
-        Ta000
+    multiline_str = """Device: subsy1
+        X_sensor_0
             Instant: 29.17 deg C
             Max    : 45.76 deg C
-        Ta001
+        X_sensor_1
             Instant: 28.59 deg C
             Max    : 44.96 deg C
-        Ts010
+        V_sensr_10
             Instant: 28.14 deg C
             Max    : 36.85 deg C
-        Ts011
+        V_sensr_11
             Instant: 28.56 deg C
             Max    : 35.17 deg C
-        Ts012
+        V_sensr_12
             Instant: 28.32 deg C
             Max    : 38.93 deg C
-        Ts013
+        V_sensr_13
             Instant: 27.98 deg C
             Max    : 36.93 deg C
-        Ts014
+        V_sensr_14
             Instant: 27.59 deg C
             Max    : 34.93 deg C
-Device: pmu
-        TDIE_BUCK0
+Device: s_sys6
+        tdb_0
             Instant: 28.17 deg C
-        TDIE_BUCK1
+        tdb_1
             Instant: 27.53 deg C
-        TDIE_BUCK2
+        tdb_2
             Instant: 27.85 deg C
-        TDIE_BUCK3
+        tdb_3
             Instant: 28.01 deg C
-        TDIE_BUCK4
+        tdb_4
             Instant: 28.73 deg C
-        TDEV2
+        tv2
             Instant: -20.15 deg C
-        TDEV3
+        tv3
             Instant: 26.88 deg C
-        TDEV4
+        tv4
             Instant: -20.16 deg C
-        TDEV5
+        tv5
             Instant: -20.16 deg C
-        TDEV6
+        tv6
             Instant: -20.19 deg C
-        TDEV7
+        tv7
             Instant: -20.21 deg C
-        TDEV8
+        tv8
             Instant: -20.19 deg C
-Device: pmu2
-        TDIE_BUCK0
+Device: s_sys1
+        tdb_0
             Instant: 25.97 deg C
-        TDIE_BUCK1
+        tdb_1
             Instant: 25.81 deg C
-        TDIE_LDO16_20
+        Tdl_DO16_20
             Instant: 27.65 deg C
-        TDIE_SW1
+        Tds_W1
             Instant: 27.09 deg C
-        TDIE_SW3
+        Tds_W3
             Instant: 26.65 deg C
-        TCAL
+        Tcl
             Instant: 51.28 deg C
-        TDEV1
+        tv1
             Instant: 24.46 deg C
-        TDEV7
+        tv7
             Instant: 24.91 deg C
-        TDEV8
+        tv8
             Instant: 24.62 deg C
-Device: clvr
-        temp_a0_buck0
+Device: subsys2
+        x_temp0
             Instant: 28.93 deg C
-        temp_a1_buck0
+        x_temp1
             Instant: 26.88 deg C
-        temp_b1_buck0
+        s_temp1
             Instant: 28.33 deg C
-        temp_a2_buck0
+        x_temp2
             Instant: 28.01 deg C
-        temp_b2_buck0
+        s_temp2
             Instant: 28.01 deg C"""
 
     dct1 = dict1_of_group(multiline_str, "Device:", 1)
