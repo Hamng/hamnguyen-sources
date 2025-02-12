@@ -78,6 +78,8 @@ from typing import Dict, Iterator, List, Tuple
 import itertools
 import re
 import json
+#from shell import run
+
 
 def groupby_list_len(lst: List, list_len: int) -> Tuple[str, List]:
     """
@@ -192,19 +194,61 @@ def split_by_outer_header(a_str: str, pattern: str) -> Tuple[str, str]:
             #    following it; e.g. a_str="... Dev:", or a_str="... Dev:  "
             continue
 
+
+def parse_level2_value(list_of_list: Iterator) -> Dict:
+    """
+    Parse the given list-of-list to return a Dict
+
+    Parameters
+    ----------
+    list_of_list : Iterator
+        A list-of-list to parse
+
+    Returns
+    -------
+    Dict: which could be either
+        {'ERROR': '...'}
+        {'WARN*': '...'}
+        {'Instant': value}
+        {'Instant': value, 'Max': value}
+
+    Steps:
+     1. E.g. list_of_list = [['Instant:', '29.17', 'deg', 'C'], ['Max', ':', '45.76', ...]]
+     2. From the 1st sublist of itr, extract its 1st word; i.e. 'Instant:'
+     3. If it starts with either 'ERROR' or 'WARN', form a new dict with an entry:
+            Key: 1st word in all CAPS, stripped off ':' ==> 'ERROR' or 'WARN*'
+            Value: joining the remaining elements
+     4. Else, form a new dict with an entry:
+            Key: 1st sublist, 1st word;     e.g. {'Instant':    (stripped off ':')
+            Value: 1st sublist, 2nd word;   e.g.            '29.17'}
+     5. If >1 sublists, update new dict in #4 with an entry:
+            Key: 2nd sublist, 1st word;     e.g. {'Max':
+            Value: 2nd sublist, 3rd word;   e.g.       '45.76'}
+    """
+    #for l1_key, l1_value in ...:
+    #   for l2_key, l2_value in ...:
+    #       yield l1_key, l2_key, parse_level2_value(l2_value)
+    lst = list(list_of_list)
+    word0 = lst[0][0]
+    #print(f'word0="{word0}", lst={len(lst)}#{lst}')
+    if word0.upper().startswith('ERROR') or word0.upper().startswith('WARN'):
+        dct = {word0.upper().strip(':'): ' '.join(lst[0][1:])}
+    else:
+        dct = {word0.strip(':'): lst[0][1]}
+        if len(lst) > 1:
+            dct.update({lst[1][0]: lst[1][2]})
+    #print(f'word0="{word0}", dct={len(dct)}#{dct}')
+    return dct
+
+
 def split_groupby(s: str, outer_header: str, inner_header_len: int) -> Iterator[Dict]:
     for outer_k, v in split_by_outer_header(s, outer_header):
         itr = (l.strip().split() for l in v.splitlines())
         #print(f'outer_k="{outer_k}", itr={list(itr)}')
         #itr = (l.strip().split() for l in v.splitlines())
-        for inner_k, itr2 in groupby_list_len(itr, inner_header_len):
-            lst = list(itr2)
-            #print(f'\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
-            dct = {lst[0][0][:-1]: lst[0][1]}
-            if len(lst) > 1:
-                dct.update({lst[1][0]: lst[1][2]})
-            #print(f'outer_k="{outer_k}",\tinner_k="{inner_k}", dct={len(dct)}#{dct}')
-            yield (outer_k, inner_k, dct)
+        for inner_k, inner_v in groupby_list_len(itr, inner_header_len):
+            yield outer_k, inner_k, parse_level2_value(inner_v)
+
 
 def dict1_of_group(s, outer_header: str, inner_header_len: int):
     dct = {}
@@ -257,19 +301,8 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #       ('x_temp0',     [['Instant:', ...]])
 #       ...
 #       ('s_temp2',     [['Instant:', ...]])
-# 4.From the 2nd element of each inner-tuple; e.g. [['Instant:', ...], ['Max', ...]],
-#   then from the 1st (or only) sublist; e.g. ['Instant:', '51.28', 'deg', 'C'],
-#   form a dictionary with:
-#  4a.  Key is the 1st element (with the ending ':' stripped off) = 'Instant'
-#  4b.  Value is the 2nd element (temperature) = '51.28'
-#  4c.  New dictionary: dct = {'Instant': '51.28'}
-# 5.And if the inner-tuple's 2nd-element has more than 1 sublists,
-#   then from the 2nd sublist; e.g. ['Max', ':', '45.76', 'deg', 'C'],
-#   form a {key: value} pair:
-#  5a.  Key is the 1st element = 'Max'
-#  5b.  Value is the 3rd element (temperature) = '45.76'
-#  5c.  Add/update the dictionary in step #4 with: {'Max': '45.76'}
-# 6.For each outer_k, and inner_ iteration, yield a tuple to the caller as:
+# 4.Parse the inner values; e.g. [['Instant:', ...], ['Max', ...]]
+# 5.Successively, yield:
 #       ('subsy1',  'X_sensor_0',   {'Instant': '29.17', 'Max': '45.76'})
 #       ...           
 #       ('subsy1',  'V_sensr_14',   {'Instant': '27.59', 'Max': '34.93'})
@@ -283,14 +316,8 @@ def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator
     #print(*lst, sep='\n')
     for outer_k, itr in groupby_list_len(lst, outer_header_len):
         #print(f'outer_k="{outer_k}", itr={list(itr)}')
-        for inner_k, itr2 in groupby_list_len(itr, inner_header_len):
-            lst = list(itr2)
-            #print(f'\t\t\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
-            dct = {lst[0][0][:-1]: lst[0][1]}
-            if len(lst) > 1:
-                dct.update({lst[1][0]: lst[1][2]})
-            #print(f'outer_k="{outer_k}",\tinner_k="{inner_k}", dct={len(dct)}#{dct}')
-            yield (outer_k, inner_k, dct)
+        for inner_k, inner_v in groupby_list_len(itr, inner_header_len):
+            yield outer_k, inner_k, parse_level2_value(inner_v)
 
 
 def dict2_of_group(s, outer_header_len, inner_header_len: int):
@@ -351,14 +378,9 @@ def groupby_groupby_alt(s: str, outer_header_len, inner_header_len: int) -> Iter
     #print(*lst, sep='\n')
     for outer_k, itr in groupby_list_len_alt(lst, outer_header_len):
         #print(f'outer_k="{outer_k}", itr={list(itr)}')
-        for inner_k, itr2 in groupby_list_len_alt(itr, inner_header_len):
-            lst = list(itr2)
-            #print(f'\t\t\t\tinner_k="{inner_k}", lst={len(lst)}#{lst}')
-            dct = {lst[0][0][:-1]: lst[0][1]}
-            if len(lst) > 1:
-                dct.update({lst[1][0]: lst[1][2]})
-            #print(f'outer_k="{outer_k}",\tinner_k="{inner_k}", dct={len(dct)}#{dct}')
-            yield (outer_k, inner_k, dct)
+        for inner_k, inner_v in groupby_list_len_alt(itr, inner_header_len):
+            yield outer_k, inner_k, parse_level2_value(inner_v)
+
 
 def dict2_of_group_alt(s, outer_header_len, inner_header_len: int):
     dct = {}
@@ -370,12 +392,54 @@ def dict2_of_group_alt(s, outer_header_len, inner_header_len: int):
 
     return dct
 
+def out_of_range_check(dct: Dict, key: str, minval: float, maxval: float, bad_keys: Tuple = []):
+    """
+    Iterate thru the given dict-of-dict dct, yield a tuple if there's a bad
+    keyname (iff bad_keys is given), or if the specified key is out-of-range
+
+    Parameters
+    ----------
+    dct : Dict
+        DESCRIPTION.
+    key : str
+        DESCRIPTION.
+    minval: float
+        DESCRIPTION.
+    maxval: float
+        DESCRIPTION.
+    bad_keys : Tuple, optional
+        DESCRIPTION. The default is None.
+
+    Yields
+    ------
+    Tuple[1st_level_key, 2nd_level_key, last]
+        [0]: 1st token of each substring
+        [1]: remainder of a substring
+
+    """
+    for l1_key, l1_value in dct.items():
+        #print(f"l1_key={l1_key}, l1_value={l1_value}")
+        for l2_key, l2_value in l1_value.items():
+            #print(f'l2_key="{l2_key}"')
+            for b_key in bad_keys:
+                if b_key in l2_value:
+                    yield (l1_key, l2_key, b_key, l2_value[b_key])
+                    break
+            else:
+                # Got here if completing the "for" loop;
+                # i.e. did NOT "break", hence NOT having a bad_key
+                value = l2_value.get(key)
+                if value:
+                    value = float(value)
+                    if (value < minval) or (value > maxval):
+                        yield (l1_key, l2_key, key, value)
+
 
 if __name__ == '__main__':
     multiline_str = """Device: subsy1
         X_sensor_0
             Instant: 29.17 deg C
-            Max    : 45.76 deg C
+            Max    : -45.76 deg C
         X_sensor_1
             Instant: 28.59 deg C
             Max    : 44.96 deg C
@@ -390,7 +454,7 @@ if __name__ == '__main__':
             Max    : 38.93 deg C
         V_sensr_13
             Instant: 27.98 deg C
-            Max    : 36.93 deg C
+            Max    : 10036.93 deg C
         V_sensr_14
             Instant: 27.59 deg C
             Max    : 34.93 deg C
@@ -434,6 +498,11 @@ Device: s_sys1
             Instant: 51.28 deg C
         tv1
             Instant: 24.46 deg C
+Device: wrn_dev
+        wrn_sensor
+WARNING: Can't initialize the Gas Gauge HAL.
+?
+Error getting value from the sensor: Device Error^^malformed: missing <CR>^^Device: next_device
         tv7
             Instant: 24.91 deg C
         tv8
@@ -443,6 +512,11 @@ Device: subsys2
             Instant: 28.93 deg C
         x_temp1
             Instant: 26.88 deg C
+        err_temp1
+ERROR: Timed out updating Thermal Sensor xx
+ERROR: Time out: Failed to get Temperature SnapShot
+ERROR: Failed to get sensor data for err_temp1
+
         s_temp1
             Instant: 28.33 deg C
         x_temp2
@@ -451,12 +525,33 @@ Device: subsys2
             Instant: 28.01 deg C"""
 
     dct1 = dict1_of_group(multiline_str, "Device:", 1)
-    print('dct1 =', json.dumps(dct1, sort_keys=True, indent=4))
+    #print('dct1 =', json.dumps(dct1, sort_keys=True, indent=4))
 
     dct2 = dict2_of_group(multiline_str, 2, 1)
-    print('dct2 =', json.dumps(dct2, sort_keys=True, indent=4))
+    #print('dct2 =', json.dumps(dct2, sort_keys=True, indent=4))
 
+    #multiline_str = run("temperature --all", True)
     dct2_alt = dict2_of_group_alt(multiline_str, 2, 1)
     print('dct2_alt =', json.dumps(dct2_alt, sort_keys=True, indent=4))
     # MicroPython json.dumps() doesn't do much, so use print()
     #print('dct2_alt =', dct2_alt)
+
+    # Detect error only
+    #for tupl in out_of_range_check(dct2_alt, None, None, None, ['ERROR', 'WARNING']):
+    #    if not isinstance(tupl[-1], float):
+    #        print(f"\n{tupl[0]}::{tupl[1]}: " + ' '.join(tupl[2:]))
+
+    temp_min = 0.0
+    temp_max = 120.0
+    for tupl in out_of_range_check(dct2_alt, 'Instant', temp_min, temp_max, ['ERROR', 'WARNING']):
+        #print(tupl)
+        if isinstance(tupl[-1], float):
+            print(f"{tupl[0]}::{tupl[1]}.{tupl[2]}={tupl[-1]:.2f} out-of-range [{temp_min:.1f}, {temp_max:.1f}]")
+        else:
+            print(f"\n{tupl[0]}::{tupl[1]}: " + ' '.join(tupl[2:]))
+
+    print('\n')
+    for tupl in out_of_range_check(dct2_alt, 'Max', temp_min, temp_max):
+        #print(tupl)
+        if isinstance(tupl[-1], float):
+            print(f"{tupl[0]}::{tupl[1]}.{tupl[2]}={tupl[-1]:.2f} out-of-range [{temp_min:.1f}, {temp_max:.1f}]")
