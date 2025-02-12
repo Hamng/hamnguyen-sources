@@ -195,40 +195,42 @@ def split_by_outer_header(a_str: str, pattern: str) -> Tuple[str, str]:
             continue
 
 
-def parse_level2_value(list_of_list: Iterator) -> Dict:
+def parse_level2_value(list_of_lists: Iterator) -> Dict:
     """
-    Parse the given list-of-list to return a Dict
+    Parse the given list-of-lists to return a Dict
 
     Parameters
     ----------
-    list_of_list : Iterator
+    list_of_lists : Iterator
         A list-of-list to parse
 
     Returns
     -------
-    Dict: which could be either
+    Dict: which could be either:
         {'ERROR': '...'}
         {'WARN*': '...'}
-        {'Instant': value}
-        {'Instant': value, 'Max': value}
+        {'Instant': 'value'}
+        {'Instant': 'value', 'Max': 'value'}
 
     Steps:
      1. E.g. list_of_list = [['Instant:', '29.17', 'deg', 'C'], ['Max', ':', '45.76', ...]]
      2. From the 1st sublist of itr, extract its 1st word; i.e. 'Instant:'
      3. If it starts with either 'ERROR' or 'WARN', form a new dict with an entry:
             Key: 1st word in all CAPS, stripped off ':' ==> 'ERROR' or 'WARN*'
-            Value: joining the remaining elements
+            Value: joining the remaining words of the 1st sublist
      4. Else, form a new dict with an entry:
             Key: 1st sublist, 1st word;     e.g. {'Instant':    (stripped off ':')
             Value: 1st sublist, 2nd word;   e.g.            '29.17'}
-     5. If >1 sublists, update new dict in #4 with an entry:
+     5. If >1 sublists, update the newly formed dict in #4 with an entry:
             Key: 2nd sublist, 1st word;     e.g. {'Max':
             Value: 2nd sublist, 3rd word;   e.g.       '45.76'}
+     6. Return the formed dict
+
     """
     #for l1_key, l1_value in ...:
     #   for l2_key, l2_value in ...:
     #       yield l1_key, l2_key, parse_level2_value(l2_value)
-    lst = list(list_of_list)
+    lst = list(list_of_lists)
     word0 = lst[0][0]
     #print(f'word0="{word0}", lst={len(lst)}#{lst}')
     if word0.upper().startswith('ERROR') or word0.upper().startswith('WARN'):
@@ -241,7 +243,7 @@ def parse_level2_value(list_of_list: Iterator) -> Dict:
     return dct
 
 
-def split_groupby(s: str, outer_header: str, inner_header_len: int) -> Iterator[Dict]:
+def split_groupby(s: str, outer_header: str, inner_header_len: int) -> Tuple[str, str, Dict]:
     for outer_k, v in split_by_outer_header(s, outer_header):
         itr = (l.strip().split() for l in v.splitlines())
         #print(f'outer_k="{outer_k}", itr={list(itr)}')
@@ -250,7 +252,7 @@ def split_groupby(s: str, outer_header: str, inner_header_len: int) -> Iterator[
             yield outer_k, inner_k, parse_level2_value(inner_v)
 
 
-def dict1_of_group(s, outer_header: str, inner_header_len: int):
+def dict1_of_group(s, outer_header: str, inner_header_len: int) -> Dict:
     dct = {}
     for outer_k, inner_k, entry in split_groupby(s, outer_header, inner_header_len):
         if outer_k in dct:
@@ -311,7 +313,7 @@ def dict1_of_group(s, outer_header: str, inner_header_len: int):
 #       ('s_sys6',  'tv8',          {'Instant': '-20.19'})
 #       ...           
 #       ('subsys2', 's_temp2',      {'Instant': '28.01'})
-def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
+def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Tuple[str, str, Dict]:
     lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
     #print(*lst, sep='\n')
     for outer_k, itr in groupby_list_len(lst, outer_header_len):
@@ -320,7 +322,7 @@ def groupby_groupby(s: str, outer_header_len, inner_header_len: int) -> Iterator
             yield outer_k, inner_k, parse_level2_value(inner_v)
 
 
-def dict2_of_group(s, outer_header_len, inner_header_len: int):
+def dict2_of_group(s, outer_header_len, inner_header_len: int) -> Dict:
     dct = {}
     for outer_k, inner_k, entry in groupby_groupby(s, outer_header_len, inner_header_len):
         if outer_k in dct:
@@ -336,7 +338,7 @@ def dict2_of_group(s, outer_header_len, inner_header_len: int):
 #   5. ERROR: lst = [[a], [b, c], [d, e, f], [g, h], [i], [j], [k]]
 #       (a, [[b, c], [d, e, f], [g, h]])
 #       (k, [])
-def groupby_list_len_alt(lst: List, list_len: int) -> Iterator[Tuple[str, List]]:
+def groupby_list_len_alt(lst: List, list_len: int) -> Tuple[str, List]:
     # Must init left_elem=None here to handle the case when there're some
     # unmatched lists before the very 1st list whose len(l) == list_len
     # In that case, the 1st yield will yield (None, iterator)
@@ -373,7 +375,7 @@ def groupby_list_len_alt(lst: List, list_len: int) -> Iterator[Tuple[str, List]]
         yield (left_elem, right_list)
 
 
-def groupby_groupby_alt(s: str, outer_header_len, inner_header_len: int) -> Iterator[Dict]:
+def groupby_groupby_alt(s: str, outer_header_len, inner_header_len: int) -> Tuple[str, str, Dict]:
     lst = [l.strip().split() for l in s.strip().splitlines() if l.strip()]
     #print(*lst, sep='\n')
     for outer_k, itr in groupby_list_len_alt(lst, outer_header_len):
@@ -382,7 +384,7 @@ def groupby_groupby_alt(s: str, outer_header_len, inner_header_len: int) -> Iter
             yield outer_k, inner_k, parse_level2_value(inner_v)
 
 
-def dict2_of_group_alt(s, outer_header_len, inner_header_len: int):
+def dict2_of_group_alt(s, outer_header_len, inner_header_len: int) -> Dict:
     dct = {}
     for outer_k, inner_k, entry in groupby_groupby_alt(s, outer_header_len, inner_header_len):
         if outer_k in dct:
@@ -392,6 +394,7 @@ def dict2_of_group_alt(s, outer_header_len, inner_header_len: int):
 
     return dct
 
+
 def out_of_range_check(dct: Dict, key: str, minval: float, maxval: float, bad_keys: Tuple = []):
     """
     Iterate thru the given dict-of-dict dct, yield a tuple if there's a bad
@@ -400,21 +403,23 @@ def out_of_range_check(dct: Dict, key: str, minval: float, maxval: float, bad_ke
     Parameters
     ----------
     dct : Dict
-        DESCRIPTION.
+        A dict-of-dict to be iterated.
     key : str
-        DESCRIPTION.
+        Key containing a float value.
     minval: float
-        DESCRIPTION.
+        Minimum value to compare against.
     maxval: float
-        DESCRIPTION.
+        Maximum value to compare against.
     bad_keys : Tuple, optional
-        DESCRIPTION. The default is None.
+        A tuple of bad keys
 
     Yields
     ------
-    Tuple[1st_level_key, 2nd_level_key, last]
-        [0]: 1st token of each substring
-        [1]: remainder of a substring
+    Tuple: if bad_key, or out-of-range:
+        [0]: level-1 key
+        [1]: level-2 key
+        [2]: key that's in-error
+        [3]: if out-of-range, will be a float value; else, a string
 
     """
     for l1_key, l1_value in dct.items():
@@ -426,8 +431,8 @@ def out_of_range_check(dct: Dict, key: str, minval: float, maxval: float, bad_ke
                     yield (l1_key, l2_key, b_key, l2_value[b_key])
                     break
             else:
-                # Got here if completing the "for" loop;
-                # i.e. did NOT "break", hence NOT having a bad_key
+                # Got here if completing the "for" loop normally;
+                # i.e. did NOT "break", hence NOT finding a bad_key
                 value = l2_value.get(key)
                 if value:
                     value = float(value)
